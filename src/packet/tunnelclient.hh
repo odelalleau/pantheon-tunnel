@@ -6,7 +6,6 @@
 #include <string>
 
 #include "netdevice.hh"
-#include "nat.hh"
 #include "util.hh"
 #include "address.hh"
 #include "event_loop.hh"
@@ -20,7 +19,6 @@ private:
     char ** const user_environment_;
     std::pair<Address, Address> egress_ingress;
     Address nameserver_;
-    NAT nat_rule_ {};
 
     UDPSocket server_socket_;
 

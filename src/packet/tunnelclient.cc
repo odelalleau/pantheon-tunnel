@@ -8,7 +8,7 @@
 
 #include "tunnelclient.hh"
 #include "netdevice.hh"
-#include "nat.hh"
+#include "system_runner.hh"
 #include "util.hh"
 #include "interfaces.hh"
 #include "address.hh"
@@ -27,7 +27,6 @@ TunnelClient<FerryQueueType>::TunnelClient( char ** const user_environment,
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses().first, private_address ),
       nameserver_( first_nameserver() ),
-      nat_rule_( ingress_addr() ),
       server_socket_(),
       event_loop_()
 {
