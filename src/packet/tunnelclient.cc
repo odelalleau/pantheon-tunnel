@@ -23,9 +23,10 @@ using namespace PollerShortNames;
 template <class FerryQueueType>
 TunnelClient<FerryQueueType>::TunnelClient( char ** const user_environment,
                                             const Address & server_address,
-                                            const Address & private_address )
+                                            const Address & local_private_address,
+                                            const Address & server_private_address )
     : user_environment_( user_environment ),
-      egress_ingress( two_unassigned_addresses().first, private_address ),
+      egress_ingress( server_private_address, local_private_address ),
       nameserver_( first_nameserver() ),
       server_socket_(),
       event_loop_()
