@@ -47,7 +47,7 @@ TunnelServer<FerryQueueType>::TunnelServer( const std::string & device_prefix, c
     cout << "Client's private address should be: " << ingress_addr().ip() << endl;
     cout << "Servers's private address is: " << egress_addr().ip() << endl;
 
-    cout << "gh-client localhost " << listening_socket_.local_address().port() << " " << ingress_addr().ip() << " " << egress_addr().ip() << endl;
+    cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << ingress_addr().ip() << " " << egress_addr().ip() << endl;
 }
 
 template <class FerryQueueType>

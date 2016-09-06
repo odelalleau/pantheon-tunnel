@@ -41,15 +41,15 @@ mm_replayserver_SOURCES = replayserver.cc
 mm_replayserver_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/libhttprecordprotos.a $(protobuf_LIBS)
 mm_replayserver_LDFLAGS = -pthread
 
-bin_PROGRAMS += gh-client
-gh_client_SOURCES = gh-client.cc trivial_queue.hh
-gh_client_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
-gh_client_LDFLAGS = -pthread
+bin_PROGRAMS += mm-tunnelclient
+mm_tunnelclient_SOURCES = tunnelclientshell.cc trivial_queue.hh
+mm_tunnelclient_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
+mm_tunnelclient_LDFLAGS = -pthread
 
-bin_PROGRAMS += gh-server
-gh_server_SOURCES = gh-server.cc trivial_queue.hh
-gh_server_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
-gh_server_LDFLAGS = -pthread
+bin_PROGRAMS += mm-tunnelserver
+mm_tunnelserver_SOURCES = tunnelservershell.cc trivial_queue.hh
+mm_tunnelserver_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
+mm_tunnelserver_LDFLAGS = -pthread
 
 lib_LTLIBRARIES = libmod_deepcgi.la
 libmod_deepcgi_la_SOURCES = mod_deepcgi.c replayserver_filename.cc
@@ -71,7 +71,7 @@ install-exec-hook:
 	chmod u+s $(DESTDIR)$(bindir)/mm-webrecord
 	chown root $(DESTDIR)$(bindir)/mm-webreplay
 	chmod u+s $(DESTDIR)$(bindir)/mm-webreplay
-	chown root $(DESTDIR)$(bindir)/gh-client
-	chmod u+s $(DESTDIR)$(bindir)/gh-client
-	chown root $(DESTDIR)$(bindir)/gh-server
-	chmod u+s $(DESTDIR)$(bindir)/gh-server
+	chown root $(DESTDIR)$(bindir)/mm-tunnelclient
+	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelclient
+	chown root $(DESTDIR)$(bindir)/mm-tunnelserver
+	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelserver
