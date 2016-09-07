@@ -65,10 +65,8 @@ TunnelClient::TunnelClient( char ** const user_environment,
     server_socket_.connect( server_address );
 }
 
-//template <typename... Targs>
 void TunnelClient::start_uplink( const string & shell_prefix,
                                                 const vector< string > & command)
-                                                //Targs&&... Fargs )
 {
     /* Fork */
     event_loop_.add_child_process( "packetshell", [&]() {
@@ -149,17 +147,6 @@ int TunnelClient::wait_for_exit( void )
 {
     return event_loop_.loop();
 }
-
-/*
-template <class FerryQueueType>
-int TunnelClient<FerryQueueType>::Ferry::loop( FerryQueueType & uplink_queue,
-                                              FileDescriptor & ingress_tun,
-                                              FileDescriptor & server_socket_ )
-{
-
-    return internal_loop( [&] () { return uplink_queue.wait_time(); } );
-}
-*/
 
 struct TemporaryEnvironment
 {

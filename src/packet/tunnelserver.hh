@@ -43,8 +43,8 @@ public:
                   const std::string & ingress_logfile,
                   const std::string & egress_logfile );
 
-    //template <typename... Targs>
-    void start_downlink();// Targs&&... Fargs );
+    
+    void start_downlink();
 
     int wait_for_exit( void );
 

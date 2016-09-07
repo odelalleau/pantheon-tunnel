@@ -30,14 +30,6 @@ private:
     const Address & egress_addr( void ) { return egress_ingress.first; }
     const Address & ingress_addr( void ) { return egress_ingress.second; }
 
-    /*
-    class Ferry : public EventLoop
-    {
-    public:
-        int loop( FerryQueueType & ferry_queue, FileDescriptor & tun, FileDescriptor & sibling );
-    };
-    */
-
     Address get_mahimahi_base( void ) const;
 
 public:
@@ -47,10 +39,8 @@ public:
                   const std::string & ingress_logfile,
                   const std::string & egress_logfile );
 
-    //template <typename... Targs>
     void start_uplink( const std::string & shell_prefix,
                        const std::vector< std::string > & command);
-                       //Targs&&... Fargs );
 
     int wait_for_exit( void );
 

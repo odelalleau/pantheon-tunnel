@@ -73,8 +73,7 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
     cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << ingress_addr().ip() << " " << egress_addr().ip() << endl;
 }
 
-//template <typename... Targs>
-void TunnelServer::start_downlink( )//Targs&&... Fargs )
+void TunnelServer::start_downlink( )
 {
     event_loop_.add_child_process( "downlink", [&] () {
             drop_privileges();
