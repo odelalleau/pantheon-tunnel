@@ -21,7 +21,9 @@
 using namespace std;
 using namespace PollerShortNames;
 
-TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment, const std::string & logfile )
+TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment,
+        const std::string & ingress_logfile,
+        const std::string & egress_logfile )
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
       nameserver_( first_nameserver() ),
@@ -30,7 +32,8 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
       nat_rule_( ingress_addr() ),
       listening_socket_(),
       event_loop_(),
-      log_()
+      ingress_log_(),
+      egress_log_()
 {
     /* make sure environment has been cleared */
     if ( environ != nullptr ) {
@@ -40,14 +43,22 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
     /* initialize base timestamp value before any forking */
     initial_timestamp();
 
-    /* open logfile if called for */
-    if ( not logfile.empty() ) {
-        log_.reset( new ofstream( logfile ) );
-        if ( not log_->good() ) {
-            throw runtime_error( logfile + ": error opening for writing" );
+    /* open logfiles if called for */
+    if ( not ingress_logfile.empty() ) {
+        ingress_log_.reset( new ofstream( ingress_logfile ) );
+        if ( not ingress_log_->good() ) {
+            throw runtime_error( ingress_logfile + ": error opening for writing" );
         }
 
-        *log_ << "# mahimahi mm-tunnelserver: " << initial_timestamp() << endl;
+        *ingress_log_ << "# mahimahi mm-tunnelserver ingress: " << initial_timestamp() << endl;
+    }
+    if ( not egress_logfile.empty() ) {
+        egress_log_.reset( new ofstream( egress_logfile ) );
+        if ( not egress_log_->good() ) {
+            throw runtime_error( egress_logfile + ": error opening for writing" );
+        }
+
+        *egress_log_ << "# mahimahi mm-tunnelserver egress: " << initial_timestamp() << endl;
     }
 
     /* bind the listening socket to an available address/port, and print out what was bound */
@@ -80,8 +91,8 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
                     [&] () {
                     const string packet = egress_tun_.read();
 
-                    if ( log_ ) {
-                    *log_ << timestamp() << " + " << hash<string>()(packet) << endl;
+                    if ( egress_log_ ) {
+                    *egress_log_ << timestamp() << " + " << hash<string>()(packet) << endl;
                     }
 
                     ((FileDescriptor &) listening_socket_).write( packet );
@@ -93,8 +104,8 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
                     [&] () {
                     const string packet = ((FileDescriptor &) listening_socket_).read();
 
-                    if ( log_ ) {
-                    *log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    if ( ingress_log_ ) {
+                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << endl;
                     }
 
                     egress_tun_.write( packet );

@@ -30,7 +30,8 @@ private:
 
     EventLoop event_loop_;
 
-    std::unique_ptr<std::ofstream> log_;
+    std::unique_ptr<std::ofstream> ingress_log_;
+    std::unique_ptr<std::ofstream> egress_log_;
 
     const Address & egress_addr( void ) { return egress_ingress.first; }
     const Address & ingress_addr( void ) { return egress_ingress.second; }
@@ -39,7 +40,8 @@ private:
 
 public:
     TunnelServer( const std::string & device_prefix, char ** const user_environment,
-                  const std::string & logfile );
+                  const std::string & ingress_logfile,
+                  const std::string & egress_logfile );
 
     //template <typename... Targs>
     void start_downlink();// Targs&&... Fargs );
