@@ -21,7 +21,7 @@
 using namespace std;
 using namespace PollerShortNames;
 
-TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment )
+TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment, const std::string & logfile )
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
       nameserver_( first_nameserver() ),
@@ -29,7 +29,8 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
       dns_outside_( egress_addr(), nameserver_, nameserver_ ),
       nat_rule_( ingress_addr() ),
       listening_socket_(),
-      event_loop_()
+      event_loop_(),
+      log_()
 {
     /* make sure environment has been cleared */
     if ( environ != nullptr ) {
@@ -38,6 +39,16 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
 
     /* initialize base timestamp value before any forking */
     initial_timestamp();
+
+    /* open logfile if called for */
+    if ( not logfile.empty() ) {
+        log_.reset( new ofstream( logfile ) );
+        if ( not log_->good() ) {
+            throw runtime_error( logfile + ": error opening for writing" );
+        }
+
+        *log_ << "# mahimahi mm-tunnelserver: " << initial_timestamp() << endl;
+    }
 
     /* bind the listening socket to an available address/port, and print out what was bound */
     listening_socket_.bind( Address() );
@@ -68,6 +79,11 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
             outer_loop.add_simple_input_handler( egress_tun_,
                     [&] () {
                     const string packet = egress_tun_.read();
+
+                    if ( log_ ) {
+                    *log_ << timestamp() << " + " << hash<string>()(packet) << endl;
+                    }
+
                     ((FileDescriptor &) listening_socket_).write( packet );
                     return ResultType::Continue;
                     } );
@@ -76,6 +92,11 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
             outer_loop.add_simple_input_handler( listening_socket_,
                     [&] () {
                     const string packet = ((FileDescriptor &) listening_socket_).read();
+
+                    if ( log_ ) {
+                    *log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    }
+
                     egress_tun_.write( packet );
                     return ResultType::Continue;
                     } );

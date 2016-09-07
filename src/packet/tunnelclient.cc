@@ -2,6 +2,7 @@
 
 #include <thread>
 #include <chrono>
+#include <functional>
 
 #include <sys/socket.h>
 #include <net/route.h>
@@ -23,12 +24,14 @@ using namespace PollerShortNames;
 TunnelClient::TunnelClient( char ** const user_environment,
                                             const Address & server_address,
                                             const Address & local_private_address,
-                                            const Address & server_private_address )
+                                            const Address & server_private_address,
+                                            const std::string & logfile )
     : user_environment_( user_environment ),
       egress_ingress( server_private_address, local_private_address ),
       nameserver_( first_nameserver() ),
       server_socket_(),
-      event_loop_()
+      event_loop_(),
+      log_()
 {
     /* make sure environment has been cleared */
     if ( environ != nullptr ) {
@@ -37,6 +40,16 @@ TunnelClient::TunnelClient( char ** const user_environment,
 
     /* initialize base timestamp value before any forking */
     initial_timestamp();
+
+    /* open logfile if called for */
+    if ( not logfile.empty() ) {
+        log_.reset( new ofstream( logfile ) );
+        if ( not log_->good() ) {
+            throw runtime_error( logfile + ": error opening for writing" );
+        }
+
+        *log_ << "# mahimahi mm-tunnelclient: " << initial_timestamp() << endl;
+    }
 
     /* connect the server_socket to the server_address */
     server_socket_.connect( server_address );
@@ -89,14 +102,26 @@ void TunnelClient::start_uplink( const string & shell_prefix,
             /* ingress_tun device gets datagram -> read it -> give to server socket */
             inner_loop.add_simple_input_handler( ingress_tun,
                     [&] () {
-                    server_socket_.write( ingress_tun.read() );
+                    const string packet = ingress_tun.read();
+
+                    if ( log_ ) {
+                    *log_ << timestamp() << " + " << hash<string>()(packet) << endl;
+                    }
+
+                    server_socket_.write( packet );
                     return ResultType::Continue;
                     } );
 
             /* we get datagram from server_socket_ process -> write it to ingress_tun device */
             inner_loop.add_simple_input_handler( server_socket_,
                     [&] () {
-                    ingress_tun.write( server_socket_.read() );
+                    const string packet = server_socket_.read();
+
+                    if ( log_ ) {
+                    *log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    }
+
+                    ingress_tun.write( packet );
                     return ResultType::Continue;
                     } );
 

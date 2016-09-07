@@ -22,7 +22,7 @@ int main( int argc, char *argv[] )
             throw runtime_error( "Usage: " + string( argv[ 0 ] ) );
         }
 
-        TunnelServer tunnelled_app( "tunnel", user_environment );
+        TunnelServer tunnelled_app( "tunnel", user_environment, "/tmp/tunnelserver.log" );
         tunnelled_app.start_downlink();
 
         return tunnelled_app.wait_for_exit();

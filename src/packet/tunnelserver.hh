@@ -4,6 +4,8 @@
 #define TUNNELSERVER_HH
 
 #include <string>
+#include <fstream>
+#include <memory>
 
 #include "netdevice.hh"
 #include "nat.hh"
@@ -28,13 +30,16 @@ private:
 
     EventLoop event_loop_;
 
+    std::unique_ptr<std::ofstream> log_;
+
     const Address & egress_addr( void ) { return egress_ingress.first; }
     const Address & ingress_addr( void ) { return egress_ingress.second; }
 
     Address get_mahimahi_base( void ) const;
 
 public:
-    TunnelServer( const std::string & device_prefix, char ** const user_environment );
+    TunnelServer( const std::string & device_prefix, char ** const user_environment,
+                  const std::string & logfile );
 
     //template <typename... Targs>
     void start_downlink();// Targs&&... Fargs );

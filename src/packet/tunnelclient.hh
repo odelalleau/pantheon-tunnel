@@ -1,9 +1,10 @@
-/* -*-mode:c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */
-
+/* -*-mode:c++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- */ 
 #ifndef TUNNELCLIENT_HH
 #define TUNNELCLIENT_HH
 
 #include <string>
+#include <fstream>
+#include <memory>
 
 #include "netdevice.hh"
 #include "util.hh"
@@ -23,6 +24,8 @@ private:
 
     EventLoop event_loop_;
 
+    std::unique_ptr<std::ofstream> log_;
+
     const Address & egress_addr( void ) { return egress_ingress.first; }
     const Address & ingress_addr( void ) { return egress_ingress.second; }
 
@@ -39,7 +42,8 @@ private:
 public:
     TunnelClient( char ** const user_environment, const Address & server_address,
                   const Address & local_private_address,
-                  const Address & server_private_address );
+                  const Address & server_private_address,
+                  const std::string & logfile );
 
     //template <typename... Targs>
     void start_uplink( const std::string & shell_prefix,
