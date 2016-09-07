@@ -21,8 +21,7 @@
 using namespace std;
 using namespace PollerShortNames;
 
-template <class FerryQueueType>
-TunnelServer<FerryQueueType>::TunnelServer( const std::string & device_prefix, char ** const user_environment )
+TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment )
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
       nameserver_( first_nameserver() ),
@@ -52,78 +51,41 @@ TunnelServer<FerryQueueType>::TunnelServer( const std::string & device_prefix, c
     cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << ingress_addr().ip() << " " << egress_addr().ip() << endl;
 }
 
-template <class FerryQueueType>
-template <typename... Targs>
-void TunnelServer<FerryQueueType>::start_downlink( Targs&&... Fargs )
+//template <typename... Targs>
+void TunnelServer::start_downlink( )//Targs&&... Fargs )
 {
-    /* g++ bug 55914 makes this hard before version 4.9 */
-    BindWorkAround::bind<FerryQueueType, Targs&&...> ferry_maker( forward<Targs>( Fargs )... );
-
-    /*
-      This is a replacement for expanding the parameter pack
-      inside the lambda, e.g.:
-
-    auto ferry_maker = [&]() {
-        return FerryQueueType( forward<Targs>( Fargs )... );
-    };
-    */
-
     event_loop_.add_child_process( "downlink", [&] () {
             drop_privileges();
 
             /* restore environment */
             environ = user_environment_;
 
-            Ferry outer_ferry;
+            EventLoop outer_loop;
 
-            dns_outside_.register_handlers( outer_ferry );
+            dns_outside_.register_handlers( outer_loop );
 
-            FerryQueueType downlink_queue { ferry_maker() };
-            return outer_ferry.loop( downlink_queue, egress_tun_, listening_socket_ );
+            /* tun device gets datagram -> read it -> give to socket */
+            outer_loop.add_simple_input_handler( egress_tun_,
+                    [&] () {
+                    const string packet = egress_tun_.read();
+                    ((FileDescriptor &) listening_socket_).write( packet );
+                    return ResultType::Continue;
+                    } );
+
+            /* we get datagram from listening_socket_ process -> write it to tun device */
+            outer_loop.add_simple_input_handler( listening_socket_,
+                    [&] () {
+                    const string packet = ((FileDescriptor &) listening_socket_).read();
+                    egress_tun_.write( packet );
+                    return ResultType::Continue;
+                    } );
+            return outer_loop.loop();
         } );
 }
 
-template <class FerryQueueType>
-int TunnelServer<FerryQueueType>::wait_for_exit( void )
+int TunnelServer::wait_for_exit( void )
 {
     return event_loop_.loop();
-}
-
-template <class FerryQueueType>
-int TunnelServer<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
-                                              FileDescriptor & tun,
-                                              FileDescriptor & sibling )
-{
-    /* tun device gets datagram -> read it -> give to ferry */
-    add_simple_input_handler( tun, 
-                              [&] () {
-                                  ferry_queue.read_packet( tun.read() );
-                                  return ResultType::Continue;
-                              } );
-
-    /* we get datagram from sibling process -> write it to tun device */
-    add_simple_input_handler( sibling,
-                              [&] () {
-                                  tun.write( sibling.read() );
-                                  return ResultType::Continue;
-                              } );
-
-    /* ferry ready to write datagram -> send to sibling process */
-    add_action( Poller::Action( sibling, Direction::Out,
-                                [&] () {
-                                    ferry_queue.write_packets( sibling );
-                                    return ResultType::Continue;
-                                },
-                                [&] () { return ferry_queue.pending_output(); } ) );
-
-    /* exit if finished */
-    add_action( Poller::Action( sibling, Direction::Out,
-                                [&] () {
-                                    return ResultType::Exit;
-                                },
-                                [&] () { return ferry_queue.finished(); } ) );
-
-    return internal_loop( [&] () { return ferry_queue.wait_time(); } );
 }
 
 struct TemporaryEnvironment
@@ -142,8 +104,7 @@ struct TemporaryEnvironment
     }
 };
 
-template <class FerryQueueType>
-Address TunnelServer<FerryQueueType>::get_mahimahi_base( void ) const
+Address TunnelServer::get_mahimahi_base( void ) const
 {
     /* temporarily break our security rule of not looking
        at the user's environment before dropping privileges */

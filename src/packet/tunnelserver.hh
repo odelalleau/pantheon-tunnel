@@ -14,7 +14,6 @@
 #include "socketpair.hh"
 #include "autosocket.hh"
 
-template <class FerryQueueType>
 class TunnelServer
 {
 private:
@@ -23,7 +22,7 @@ private:
     Address nameserver_;
     TunDevice egress_tun_;
     DNSProxy dns_outside_;
-    NAT nat_rule_ {};
+    NAT nat_rule_;
 
     AutoSocket listening_socket_;
 
@@ -32,19 +31,13 @@ private:
     const Address & egress_addr( void ) { return egress_ingress.first; }
     const Address & ingress_addr( void ) { return egress_ingress.second; }
 
-    class Ferry : public EventLoop
-    {
-    public:
-        int loop( FerryQueueType & ferry_queue, FileDescriptor & tun, FileDescriptor & sibling );
-    };
-
     Address get_mahimahi_base( void ) const;
 
 public:
     TunnelServer( const std::string & device_prefix, char ** const user_environment );
 
-    template <typename... Targs>
-    void start_downlink( Targs&&... Fargs );
+    //template <typename... Targs>
+    void start_downlink();// Targs&&... Fargs );
 
     int wait_for_exit( void );
 

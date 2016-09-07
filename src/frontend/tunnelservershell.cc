@@ -23,8 +23,8 @@ int main( int argc, char *argv[] )
             throw runtime_error( "Usage: " + string( argv[ 0 ] ) );
         }
 
-        TunnelServer<TrivialQueue> tunnelled_app( "tunnel", user_environment );
-        tunnelled_app.start_downlink( 100 );
+        TunnelServer tunnelled_app( "tunnel", user_environment );
+        tunnelled_app.start_downlink();
 
         return tunnelled_app.wait_for_exit();
     } catch ( const exception & e ) {
