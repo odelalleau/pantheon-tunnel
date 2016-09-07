@@ -3,7 +3,6 @@
 #include <vector>
 #include <string>
 
-#include "trivial_queue.hh"
 #include "util.hh"
 #include "ezio.hh"
 #include "tunnelserver.cc"
