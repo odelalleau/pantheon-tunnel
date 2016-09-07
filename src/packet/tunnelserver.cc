@@ -92,7 +92,7 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
                     const string packet = egress_tun_.read();
 
                     if ( egress_log_ ) {
-                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
                     }
 
                     ((FileDescriptor &) listening_socket_).write( packet );
@@ -105,7 +105,7 @@ void TunnelServer::start_downlink( )//Targs&&... Fargs )
                     const string packet = ((FileDescriptor &) listening_socket_).read();
 
                     if ( ingress_log_ ) {
-                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
                     }
 
                     egress_tun_.write( packet );

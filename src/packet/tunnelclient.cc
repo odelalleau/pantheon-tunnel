@@ -115,7 +115,7 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                     const string packet = ingress_tun.read();
 
                     if ( egress_log_ ) {
-                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
                     }
 
                     server_socket_.write( packet );
@@ -128,7 +128,7 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                     const string packet = server_socket_.read();
 
                     if ( ingress_log_ ) {
-                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << endl;
+                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
                     }
 
                     ingress_tun.write( packet );
