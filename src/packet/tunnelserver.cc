@@ -90,11 +90,13 @@ void TunnelServer::start_downlink( )
                     [&] () {
                     const string packet = egress_tun_.read();
 
+                    const uint64_t uid_to_send = uid_++;
+
                     if ( egress_log_ ) {
-                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
+                    *egress_log_ << timestamp() << " - " << uid_to_send << " - " << packet.length() << endl;
                     }
 
-                    ((FileDescriptor &) listening_socket_).write( packet );
+                    ((FileDescriptor &) listening_socket_).write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
                     return ResultType::Continue;
                     } );
 
@@ -103,11 +105,19 @@ void TunnelServer::start_downlink( )
                     [&] () {
                     const string packet = ((FileDescriptor &) listening_socket_).read();
 
-                    if ( ingress_log_ ) {
-                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
+                    uint64_t uid_received = *( (uint64_t *) packet.data() );
+                    string contents = packet.substr( sizeof(uid_received) );
+                    if ( uid_received == 0 ) {
+                        assert( contents.empty() );
+                        cerr << "Client connected" << endl;
+                        return ResultType::Continue;
                     }
 
-                    egress_tun_.write( packet );
+                    if ( ingress_log_ ) {
+                    *ingress_log_ << timestamp() << " - " << uid_received << " - " << contents.length() << endl;
+                    }
+
+                    egress_tun_.write( contents );
                     return ResultType::Continue;
                     } );
             return outer_loop.loop();

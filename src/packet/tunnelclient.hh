@@ -32,6 +32,8 @@ private:
 
     Address get_mahimahi_base( void ) const;
 
+    uint64_t uid_ = 0;
+
 public:
     TunnelClient( char ** const user_environment, const Address & server_address,
                   const Address & local_private_address,

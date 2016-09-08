@@ -2,7 +2,6 @@
 
 #include <thread>
 #include <chrono>
-#include <functional>
 
 #include <sys/socket.h>
 #include <net/route.h>
@@ -63,6 +62,8 @@ TunnelClient::TunnelClient( char ** const user_environment,
 
     /* connect the server_socket to the server_address */
     server_socket_.connect( server_address );
+    const uint64_t uid_to_send = uid_++;
+    server_socket_.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
 }
 
 void TunnelClient::start_uplink( const string & shell_prefix,
@@ -112,11 +113,14 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                     [&] () {
                     const string packet = ingress_tun.read();
 
+                    const uint64_t uid_to_send = uid_++;
+
                     if ( egress_log_ ) {
-                    *egress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
+                    *egress_log_ << timestamp() << " - " << uid_to_send << " - " << packet.length() << endl;
                     }
 
-                    server_socket_.write( packet );
+                    server_socket_.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
+
                     return ResultType::Continue;
                     } );
 
@@ -125,11 +129,14 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                     [&] () {
                     const string packet = server_socket_.read();
 
+                    uint64_t uid_received = *( (uint64_t *) packet.data() );
+                    string contents = packet.substr( sizeof(uid_received) );
+
                     if ( ingress_log_ ) {
-                    *ingress_log_ << timestamp() << " - " << hash<string>()(packet) << " - " << packet.length() << endl;
+                    *ingress_log_ << timestamp() << " - " << uid_received << " - " << packet.length() << endl;
                     }
 
-                    ingress_tun.write( packet );
+                    ingress_tun.write( contents );
                     return ResultType::Continue;
                     } );
 

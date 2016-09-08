@@ -38,6 +38,8 @@ private:
 
     Address get_mahimahi_base( void ) const;
 
+    uint64_t uid_ = 0;
+
 public:
     TunnelServer( const std::string & device_prefix, char ** const user_environment,
                   const std::string & ingress_logfile,
