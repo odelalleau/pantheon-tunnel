@@ -70,7 +70,7 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                                                 const vector< string > & command)
 {
     /* Fork */
-    event_loop_.add_child_process( "packetshell", [&]() {
+    event_loop_.add_child_process( "packetshell", [&]() { // XXX add special child process?
             TunDevice ingress_tun( "ingress", ingress_addr(), egress_addr() );
 
             /* bring up localhost */
@@ -153,35 +153,4 @@ void TunnelClient::start_uplink( const string & shell_prefix,
 int TunnelClient::wait_for_exit( void )
 {
     return event_loop_.loop();
-}
-
-struct TemporaryEnvironment
-{
-    TemporaryEnvironment( char ** const env )
-    {
-        if ( environ != nullptr ) {
-            throw runtime_error( "TemporaryEnvironment: cannot be entered recursively" );
-        }
-        environ = env;
-    }
-
-    ~TemporaryEnvironment()
-    {
-        environ = nullptr;
-    }
-};
-
-Address TunnelClient::get_mahimahi_base( void ) const
-{
-    /* temporarily break our security rule of not looking
-       at the user's environment before dropping privileges */
-    TemporarilyUnprivileged tu;
-    TemporaryEnvironment te { user_environment_ };
-
-    const char * const mahimahi_base = getenv( "MAHIMAHI_BASE" );
-    if ( not mahimahi_base ) {
-        return Address();
-    }
-
-    return Address( mahimahi_base, 0 );
 }
