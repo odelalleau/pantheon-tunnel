@@ -7,8 +7,8 @@ with open('/tmp/tunnelclient.egress.log') as client_egress_log:
             ( _, egress_initial_timestamp ) = line.split(':')
             firstline = False
         else:
-            (timestamp, hashval, size) = line.split('-')
-            egress_packets[hashval] = (timestamp, size)
+            (timestamp, uid, size) = line.split('-')
+            egress_packets[uid] = (timestamp, size)
 
 unsorted_log = []
 with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
@@ -18,10 +18,10 @@ with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
             ( _, ingress_initial_timestamp ) = line.split(':')
             firstline = False
         else:
-            (timestamp, hashval, size) = line.split('-')
+            (timestamp, uid, size) = line.split('-')
             ingress_timestamp = int(timestamp) - (int(egress_initial_timestamp) - int(ingress_initial_timestamp))
-            if hashval in egress_packets:
-                (egress_timestamp, egress_size) = egress_packets[hashval]
+            if uid in egress_packets:
+                (egress_timestamp, egress_size) = egress_packets[uid]
                 assert( size == egress_size )
                 unsorted_log.append( egress_timestamp.strip() + ' + ' + str(int(size)) )
                 unsorted_log.append( str(ingress_timestamp) + ' - ' + str(int(size)) + ' ' + str( ingress_timestamp - int(egress_timestamp) ) )
