@@ -11,7 +11,6 @@
 #include "nat.hh"
 #include "util.hh"
 #include "address.hh"
-#include "dns_proxy.hh"
 #include "event_loop.hh"
 #include "socketpair.hh"
 #include "autosocket.hh"
@@ -23,7 +22,6 @@ private:
     std::pair<Address, Address> egress_ingress;
     Address nameserver_;
     TunDevice egress_tun_;
-    DNSProxy dns_outside_;
     NAT nat_rule_;
 
     AutoSocket listening_socket_;

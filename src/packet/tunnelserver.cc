@@ -12,7 +12,6 @@
 #include "util.hh"
 #include "interfaces.hh"
 #include "address.hh"
-#include "dns_server.hh"
 #include "timestamp.hh"
 #include "exception.hh"
 #include "bindworkaround.hh"
@@ -28,7 +27,6 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
       nameserver_( first_nameserver() ),
       egress_tun_( device_prefix + "-" + to_string( getpid() ) , egress_addr(), ingress_addr() ),
-      dns_outside_( egress_addr(), nameserver_, nameserver_ ),
       nat_rule_( ingress_addr() ),
       listening_socket_(),
       event_loop_(),
@@ -82,8 +80,6 @@ void TunnelServer::start_downlink( )
             environ = user_environment_;
 
             EventLoop outer_loop;
-
-            dns_outside_.register_handlers( outer_loop );
 
             /* tun device gets datagram -> read it -> give to socket */
             outer_loop.add_simple_input_handler( egress_tun_,
