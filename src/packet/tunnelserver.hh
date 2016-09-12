@@ -20,7 +20,6 @@ class TunnelServer
 private:
     char ** const user_environment_;
     std::pair<Address, Address> egress_ingress;
-    Address nameserver_;
     TunDevice egress_tun_;
     NAT nat_rule_;
 

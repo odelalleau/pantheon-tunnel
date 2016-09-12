@@ -18,7 +18,6 @@ class TunnelClient
 private:
     char ** const user_environment_;
     std::pair<Address, Address> egress_ingress;
-    Address nameserver_;
 
     UDPSocket server_socket_;
 

@@ -25,7 +25,6 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
         const std::string & egress_logfile )
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
-      nameserver_( first_nameserver() ),
       egress_tun_( device_prefix + "-" + to_string( getpid() ) , egress_addr(), ingress_addr() ),
       nat_rule_( ingress_addr() ),
       listening_socket_(),

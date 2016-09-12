@@ -28,7 +28,6 @@ TunnelClient::TunnelClient( char ** const user_environment,
                                             const std::string & egress_logfile )
     : user_environment_( user_environment ),
       egress_ingress( server_private_address, local_private_address ),
-      nameserver_( first_nameserver() ),
       server_socket_(),
       event_loop_(),
       ingress_log_(),
