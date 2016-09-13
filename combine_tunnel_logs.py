@@ -4,7 +4,7 @@ with open('/tmp/tunnelclient.egress.log') as client_egress_log:
     firstline = True
     for line in client_egress_log:
         if firstline:
-            ( _, egress_initial_timestamp ) = line.split(':')
+            ( _, _, egress_initial_timestamp ) = line.split(':')
             firstline = False
         else:
             (timestamp, uid, size) = line.split('-')
@@ -15,7 +15,7 @@ with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
     firstline = True
     for line in server_ingress_log:
         if firstline:
-            ( _, ingress_initial_timestamp ) = line.split(':')
+            ( _, _, ingress_initial_timestamp ) = line.split(':')
             firstline = False
         else:
             (timestamp, uid, size) = line.split('-')
