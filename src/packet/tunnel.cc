@@ -111,11 +111,13 @@ int run_tunnel( char ** const user_environment, UDPSocket & peer_socket,
 
                     const uint64_t uid_to_send = uid_++;
 
+                    string uid_wrapped_packet = string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet;
+
                     if ( egress_log ) {
-                    *egress_log << timestamp() << " - " << uid_to_send << " - " << packet.length() << endl;
+                    *egress_log << timestamp() << " - " << uid_to_send << " - " << uid_wrapped_packet.length() << endl;
                     }
 
-                    peer_socket.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
+                    peer_socket.write( uid_wrapped_packet );
 
                     return ResultType::Continue;
                     } );
@@ -127,6 +129,10 @@ int run_tunnel( char ** const user_environment, UDPSocket & peer_socket,
 
                     uint64_t uid_received = *( (uint64_t *) packet.data() );
                     string contents = packet.substr( sizeof(uid_received) );
+                    if ( contents.empty() ) {
+                        cerr << "packet empty besides uid " << uid_received << endl;
+                        return ResultType::Exit;
+                    }
 
                     if ( ingress_log ) {
                     *ingress_log << timestamp() << " - " << uid_received << " - " << packet.length() << endl;
