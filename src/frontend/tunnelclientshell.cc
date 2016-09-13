@@ -5,7 +5,7 @@
 
 #include "util.hh"
 #include "ezio.hh"
-#include "tunnelclient.cc"
+#include "tunnel.cc"
 
 using namespace std;
 
@@ -36,10 +36,15 @@ int main( int argc, char *argv[] )
             }
         }
 
-        TunnelClient tunnelled_app( user_environment, server, local_private_address, server_private_address, "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log" );
+    UDPSocket server_socket;
+    /* connect the server_socket to the server_address */
+    server_socket.connect( server);
+    cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
+    const uint64_t uid_to_send = -1;
+    server_socket.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
 
-        tunnelled_app.start_uplink( "[tunnel " + server.str() + "] ", command );
-        return tunnelled_app.wait_for_exit();
+    return run_tunnel( user_environment, server_socket, local_private_address, server_private_address, "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log", "[tunnelclient " + server.str() + "] ", command );
+
     } catch ( const exception & e ) {
         print_exception( e );
         return EXIT_FAILURE;

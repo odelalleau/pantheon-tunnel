@@ -5,7 +5,7 @@
 
 #include "util.hh"
 #include "ezio.hh"
-#include "tunnelserver.cc"
+#include "tunnel.cc"
 
 using namespace std;
 
@@ -22,10 +22,20 @@ int main( int argc, char *argv[] )
             throw runtime_error( "Usage: " + string( argv[ 0 ] ) );
         }
 
-        TunnelServer tunnelled_app( user_environment, "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log" );
-        tunnelled_app.start_link("[tunnelserver] ", { shell_path() } );
+        Address local_private_address, client_private_address;
+        tie(local_private_address, client_private_address) = two_unassigned_addresses();
 
-        return tunnelled_app.wait_for_exit();
+        UDPSocket listening_socket;
+        /* bind the listening socket to an available address/port, and print out what was bound */
+        listening_socket.bind( Address() );
+        cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " " << client_private_address.ip() << " " << local_private_address.ip() << endl;
+
+        std::pair<Address, std::string> recpair =  listening_socket.recvfrom();
+        cout << "got connection from " << recpair.first.ip() << endl;
+        listening_socket.connect( recpair.first );
+
+
+        return run_tunnel( user_environment, listening_socket, local_private_address, client_private_address, "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log", "[tunnelserver " + listening_socket.peer_address().str() + "] ", { shell_path() } );
     } catch ( const exception & e ) {
         print_exception( e );
         return EXIT_FAILURE;
