@@ -22,7 +22,9 @@ with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
             ingress_timestamp = int(timestamp) - (int(egress_initial_timestamp) - int(ingress_initial_timestamp))
             if uid in egress_packets:
                 (egress_timestamp, egress_size) = egress_packets[uid]
-                assert( size == egress_size )
+                if size != egress_size:
+                    print("packet " + uid + " came into tunnel with size " + egress_size + " but left with size " + size)
+                    assert( False )
                 unsorted_log.append( egress_timestamp.strip() + ' + ' + str(int(size)) )
                 unsorted_log.append( str(ingress_timestamp) + ' - ' + str(int(size)) + ' ' + str( ingress_timestamp - int(egress_timestamp) ) )
 
