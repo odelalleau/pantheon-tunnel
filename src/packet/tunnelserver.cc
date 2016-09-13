@@ -8,7 +8,7 @@
 
 #include "tunnelserver.hh"
 #include "netdevice.hh"
-#include "nat.hh"
+#include "system_runner.hh"
 #include "util.hh"
 #include "interfaces.hh"
 #include "address.hh"
@@ -20,13 +20,11 @@
 using namespace std;
 using namespace PollerShortNames;
 
-TunnelServer::TunnelServer( const std::string & device_prefix, char ** const user_environment,
-        const std::string & ingress_logfile,
-        const std::string & egress_logfile )
+TunnelServer::TunnelServer( char ** const user_environment,
+                                            const std::string & ingress_logfile,
+                                            const std::string & egress_logfile )
     : user_environment_( user_environment ),
       egress_ingress( two_unassigned_addresses( get_mahimahi_base() ) ),
-      egress_tun_( device_prefix + "-" + to_string( getpid() ) , egress_addr(), ingress_addr() ),
-      nat_rule_( ingress_addr() ),
       listening_socket_(),
       event_loop_(),
       ingress_log_(),
@@ -60,30 +58,55 @@ TunnelServer::TunnelServer( const std::string & device_prefix, char ** const use
 
     /* bind the listening socket to an available address/port, and print out what was bound */
     listening_socket_.bind( Address() );
-    /*
-    cout << "Listener bound to port " << listening_socket_.local_address().port() << endl;
-
-    cout << "Client's private address should be: " << ingress_addr().ip() << endl;
-    cout << "Servers's private address is: " << egress_addr().ip() << endl;
-    */
-
-    cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << ingress_addr().ip() << " " << egress_addr().ip() << endl;
+    cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << egress_addr().ip() << " " << ingress_addr().ip() << endl;
 }
 
-void TunnelServer::start_downlink( )
+void TunnelServer::start_link( const string & shell_prefix,
+                                                const vector< string > & command)
 {
-    event_loop_.add_child_process( "downlink", [&] () {
+    /* Fork */
+    event_loop_.add_child_process( "packetshell", [&]() { // XXX add special child process?
+            TunDevice ingress_tun( "ingress", ingress_addr(), egress_addr() );
+
+            /* bring up localhost */
+            interface_ioctl( SIOCSIFFLAGS, "lo",
+                             [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_UP; } );
+
+            /* create default route */
+            rtentry route;
+            zero( route );
+
+            route.rt_gateway = egress_addr().to_sockaddr();
+            route.rt_dst = route.rt_genmask = Address().to_sockaddr();
+            route.rt_flags = RTF_UP | RTF_GATEWAY;
+
+            SystemCall( "ioctl SIOCADDRT", ioctl( UDPSocket().fd_num(), SIOCADDRT, &route ) );
+
+            EventLoop inner_loop;
+
+            /* Fork again after dropping root privileges */
             drop_privileges();
 
             /* restore environment */
             environ = user_environment_;
 
-            EventLoop outer_loop;
+            /* set MAHIMAHI_BASE if not set already to indicate outermost container */
+            SystemCall( "setenv", setenv( "MAHIMAHI_BASE",
+                                          egress_addr().ip().c_str(),
+                                          false /* don't override */ ) );
 
-            /* tun device gets datagram -> read it -> give to socket */
-            outer_loop.add_simple_input_handler( egress_tun_,
+            inner_loop.add_child_process( join( command ), [&]() {
+                    /* tweak bash prompt */
+                    prepend_shell_prefix( shell_prefix );
+
+                    return ezexec( command, true );
+                } );
+
+
+            /* ingress_tun device gets datagram -> read it -> give to server socket */
+            inner_loop.add_simple_input_handler( ingress_tun,
                     [&] () {
-                    const string packet = egress_tun_.read();
+                    const string packet = ingress_tun.read();
 
                     const uint64_t uid_to_send = uid_++;
 
@@ -92,31 +115,35 @@ void TunnelServer::start_downlink( )
                     }
 
                     ((FileDescriptor &) listening_socket_).write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
+
                     return ResultType::Continue;
                     } );
 
-            /* we get datagram from listening_socket_ process -> write it to tun device */
-            outer_loop.add_simple_input_handler( listening_socket_,
+            /* we get datagram from listening_socket_ process -> write it to ingress_tun device */
+            inner_loop.add_simple_input_handler( listening_socket_,
                     [&] () {
                     const string packet = ((FileDescriptor &) listening_socket_).read();
 
                     uint64_t uid_received = *( (uint64_t *) packet.data() );
+                    cerr << "SERVER GOT PACKET!" << endl;
                     string contents = packet.substr( sizeof(uid_received) );
-                    if ( uid_received == 0 ) {
-                        assert( contents.empty() );
-                        cerr << "Client connected" << endl;
-                        return ResultType::Continue;
-                    }
 
                     if ( ingress_log_ ) {
-                    *ingress_log_ << timestamp() << " - " << uid_received << " - " << contents.length() << endl;
+                    *ingress_log_ << timestamp() << " - " << uid_received << " - " << packet.length() << endl;
                     }
 
-                    egress_tun_.write( contents );
+                    ingress_tun.write( contents );
                     return ResultType::Continue;
                     } );
-            return outer_loop.loop();
-        } );
+
+            /* exit if finished
+            inner_loop.add_action( Poller::Action( listening_socket_, Direction::Out,
+                        [&] () {
+                        return ResultType::Exit;
+                        } ); */
+
+            return inner_loop.loop();
+        }, true );  /* new network namespace */
 }
 
 int TunnelServer::wait_for_exit( void )

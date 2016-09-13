@@ -20,8 +20,6 @@ class TunnelServer
 private:
     char ** const user_environment_;
     std::pair<Address, Address> egress_ingress;
-    TunDevice egress_tun_;
-    NAT nat_rule_;
 
     AutoSocket listening_socket_;
 
@@ -38,12 +36,12 @@ private:
     uint64_t uid_ = 0;
 
 public:
-    TunnelServer( const std::string & device_prefix, char ** const user_environment,
+    TunnelServer( char ** const user_environment,
                   const std::string & ingress_logfile,
                   const std::string & egress_logfile );
 
     
-    void start_downlink();
+    void start_link( const std::string & device_prefix, const std::vector< std::string > & command);
 
     int wait_for_exit( void );
 
