@@ -116,8 +116,11 @@ void PacketShell<FerryQueueType>::start_uplink( const string & shell_prefix,
                     return ezexec( command, true );
                 } );
 
+            /* allow downlink to write directly to inner namespace's TUN device */
+            pipe_.first.send_fd( ingress_tun );
+
             FerryQueueType uplink_queue { ferry_maker() };
-            return inner_ferry.loop( uplink_queue, ingress_tun, pipe_.first );
+            return inner_ferry.loop( uplink_queue, ingress_tun, egress_tun_ );
         }, true );  /* new network namespace */
 }
 
@@ -143,12 +146,15 @@ void PacketShell<FerryQueueType>::start_downlink( Targs&&... Fargs )
             /* restore environment */
             environ = user_environment_;
 
+            /* downlink packets go to inner namespace's TUN device */
+            FileDescriptor ingress_tun = pipe_.second.recv_fd();
+
             Ferry outer_ferry;
 
             dns_outside_.register_handlers( outer_ferry );
 
             FerryQueueType downlink_queue { ferry_maker() };
-            return outer_ferry.loop( downlink_queue, egress_tun_, pipe_.second );
+            return outer_ferry.loop( downlink_queue, egress_tun_, ingress_tun );
         } );
 }
 
@@ -170,14 +176,7 @@ int PacketShell<FerryQueueType>::Ferry::loop( FerryQueueType & ferry_queue,
                                   return ResultType::Continue;
                               } );
 
-    /* we get datagram from sibling process -> write it to tun device */
-    add_simple_input_handler( sibling,
-                              [&] () {
-                                  tun.write( sibling.read() );
-                                  return ResultType::Continue;
-                              } );
-
-    /* ferry ready to write datagram -> send to sibling process */
+    /* ferry ready to write datagram -> send to sibling's tun device */
     add_action( Poller::Action( sibling, Direction::Out,
                                 [&] () {
                                     ferry_queue.write_packets( sibling );
