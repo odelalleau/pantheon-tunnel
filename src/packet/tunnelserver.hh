@@ -12,8 +12,8 @@
 #include "util.hh"
 #include "address.hh"
 #include "event_loop.hh"
+#include "socket.hh"
 #include "socketpair.hh"
-#include "autosocket.hh"
 
 class TunnelServer
 {
@@ -21,7 +21,7 @@ private:
     char ** const user_environment_;
     std::pair<Address, Address> egress_ingress;
 
-    AutoSocket listening_socket_;
+    UDPSocket listening_socket_;
 
     EventLoop event_loop_;
 

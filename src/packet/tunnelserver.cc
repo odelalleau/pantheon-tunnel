@@ -59,6 +59,10 @@ TunnelServer::TunnelServer( char ** const user_environment,
     /* bind the listening socket to an available address/port, and print out what was bound */
     listening_socket_.bind( Address() );
     cout << "mm-tunnelclient localhost " << listening_socket_.local_address().port() << " " << egress_addr().ip() << " " << ingress_addr().ip() << endl;
+
+    std::pair<Address, std::string> recpair =  listening_socket_.recvfrom( );
+    cout << "got connection from " << recpair.first.ip() << endl;
+    listening_socket_.connect( recpair.first );
 }
 
 void TunnelServer::start_link( const string & shell_prefix,
@@ -114,7 +118,7 @@ void TunnelServer::start_link( const string & shell_prefix,
                     *egress_log_ << timestamp() << " - " << uid_to_send << " - " << packet.length() << endl;
                     }
 
-                    ((FileDescriptor &) listening_socket_).write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
+                    listening_socket_.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet );
 
                     return ResultType::Continue;
                     } );
@@ -122,10 +126,9 @@ void TunnelServer::start_link( const string & shell_prefix,
             /* we get datagram from listening_socket_ process -> write it to ingress_tun device */
             inner_loop.add_simple_input_handler( listening_socket_,
                     [&] () {
-                    const string packet = ((FileDescriptor &) listening_socket_).read();
+                    const string packet = listening_socket_.read();
 
                     uint64_t uid_received = *( (uint64_t *) packet.data() );
-                    cerr << "SERVER GOT PACKET!" << endl;
                     string contents = packet.substr( sizeof(uid_received) );
 
                     if ( ingress_log_ ) {

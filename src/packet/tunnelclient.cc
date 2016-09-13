@@ -62,8 +62,8 @@ TunnelClient::TunnelClient( char ** const user_environment,
     /* connect the server_socket to the server_address */
     server_socket_.connect( server_address );
     cerr << "client listening for server on port " << server_socket_.local_address().port() << endl;
-    uid_++;//const uint64_t uid_to_send = uid_++;
-    //server_socket_.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
+    const uint64_t uid_to_send = uid_++;
+    server_socket_.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
 }
 
 void TunnelClient::start_uplink( const string & shell_prefix,
@@ -130,7 +130,6 @@ void TunnelClient::start_uplink( const string & shell_prefix,
                     const string packet = server_socket_.read();
 
                     uint64_t uid_received = *( (uint64_t *) packet.data() );
-                    cerr << "CLIENT GOT PACKET!" << endl;
                     string contents = packet.substr( sizeof(uid_received) );
 
                     if ( ingress_log_ ) {
