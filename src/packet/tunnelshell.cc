@@ -2,39 +2,50 @@
 
 #include <thread>
 #include <chrono>
-#include <string>
-#include <fstream>
-#include <memory>
 
 #include <sys/socket.h>
 #include <net/route.h>
 
+#include "tunnelshell.hh"
 #include "netdevice.hh"
 #include "system_runner.hh"
 #include "util.hh"
-#include "event_loop.hh"
 #include "interfaces.hh"
 #include "address.hh"
 #include "timestamp.hh"
 #include "exception.hh"
-#include "bindworkaround.hh"
 #include "config.h"
-#include "socketpair.hh"
-#include "socket.hh"
 
 using namespace std;
 using namespace PollerShortNames;
 
-int run_tunnel( char ** const user_environment, UDPSocket & peer_socket,
+TunnelShell::TunnelShell( const std::string & ingress_logfile,
+                const std::string & egress_logfile )
+    : outside_shell_loop(),
+    ingress_log(),
+    egress_log()
+{
+    /* open logfiles if called for */
+    if ( not ingress_logfile.empty() ) {
+        ingress_log.reset( new ofstream( ingress_logfile ) );
+        if ( not ingress_log->good() ) {
+            throw runtime_error( ingress_logfile + ": error opening for writing" );
+        }
+    }
+    if ( not egress_logfile.empty() ) {
+        egress_log.reset( new ofstream( egress_logfile ) );
+        if ( not egress_log->good() ) {
+            throw runtime_error( egress_logfile + ": error opening for writing" );
+        }
+    }
+}
+
+void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_socket,
                   const Address & local_private_address,
                   const Address & peer_private_address,
-                  const std::string & ingress_logfile,
-                  const std::string & egress_logfile,
- const string & shell_prefix, const vector< string > & command)
+                  const string & shell_prefix,
+                  const vector< string > & command)
 {
-    uint64_t uid_ = 0;
-    EventLoop outside_shell_loop;
-
     /* make sure environment has been cleared */
     if ( environ != nullptr ) {
         throw runtime_error( shell_prefix + ": environment was not cleared" );
@@ -43,27 +54,12 @@ int run_tunnel( char ** const user_environment, UDPSocket & peer_socket,
     /* initialize base timestamp value before any forking */
     initial_timestamp();
 
-    /* open logfiles if called for */
-    std::unique_ptr<std::ofstream> ingress_log;
-    std::unique_ptr<std::ofstream> egress_log;
-
-    if ( not ingress_logfile.empty() ) {
-        ingress_log.reset( new ofstream( ingress_logfile ) );
-        if ( not ingress_log->good() ) {
-            throw runtime_error( ingress_logfile + ": error opening for writing" );
-        }
-
+    if ( ingress_log ) {
         *ingress_log << "# mahimahi " + shell_prefix + " ingress: " << initial_timestamp() << endl;
     }
-    if ( not egress_logfile.empty() ) {
-        egress_log.reset( new ofstream( egress_logfile ) );
-        if ( not egress_log->good() ) {
-            throw runtime_error( egress_logfile + ": error opening for writing" );
-        }
-
+    if ( egress_log ) {
         *egress_log << "# mahimahi " + shell_prefix + " egress: " << initial_timestamp() << endl;
     }
-
 
     /* Fork */
     outside_shell_loop.add_child_process( "packetshell", [&]() { // XXX add special child process?
@@ -150,5 +146,8 @@ int run_tunnel( char ** const user_environment, UDPSocket & peer_socket,
 
             return inner_loop.loop();
         }, true );  /* new network namespace */
+}
+
+int TunnelShell::wait_for_exit( void ) {
     return outside_shell_loop.loop();
 }

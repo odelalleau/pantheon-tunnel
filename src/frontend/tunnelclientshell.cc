@@ -2,10 +2,9 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
-#include "util.hh"
-#include "ezio.hh"
-#include "tunnel.cc"
+#include "tunnelshell.cc"
 
 using namespace std;
 
@@ -43,9 +42,10 @@ int main( int argc, char *argv[] )
         const uint64_t uid_to_send = -1;
         server_socket.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
 
-        return run_tunnel( user_environment, server_socket, local_private_address, server_private_address,
-                "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log",
+        TunnelShell tunnelclient( "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log" );
+        tunnelclient.start_link( user_environment, server_socket, local_private_address, server_private_address,
                 "[tunnelclient " + server.str() + "] ", command );
+        return tunnelclient.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );
         return EXIT_FAILURE;

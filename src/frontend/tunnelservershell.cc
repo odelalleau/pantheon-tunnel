@@ -2,10 +2,9 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
-#include "util.hh"
-#include "ezio.hh"
-#include "tunnel.cc"
+#include "tunnelshell.cc"
 
 using namespace std;
 
@@ -34,8 +33,10 @@ int main( int argc, char *argv[] )
         cout << "got connection from " << recpair.first.ip() << endl;
         listening_socket.connect( recpair.first );
 
+        TunnelShell tunnelserver( "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log" );
 
-        return run_tunnel( user_environment, listening_socket, local_private_address, client_private_address, "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log", "[tunnelserver " + listening_socket.peer_address().str() + "] ", { shell_path() } );
+        tunnelserver.start_link( user_environment, listening_socket, local_private_address, client_private_address, "[tunnelserver " + listening_socket.peer_address().str() + "] ", { shell_path() } );
+        return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );
         return EXIT_FAILURE;
