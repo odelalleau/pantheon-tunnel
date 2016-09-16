@@ -17,8 +17,18 @@ int main( int argc, char *argv[] )
 
         check_requirements( argc, argv );
 
-        if ( argc != 1 ) {
-            throw runtime_error( "Usage: " + string( argv[ 0 ] ) );
+        if ( argc < 1 ) {
+            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " [command...]" );
+        }
+
+        vector< string > command;
+
+        if ( argc == 1 ) {
+            command.push_back( shell_path() );
+        } else {
+            for ( int i = 1; i < argc; i++ ) {
+                command.push_back( argv[ i ] );
+            }
         }
 
         Address local_private_address, client_private_address;
@@ -35,7 +45,7 @@ int main( int argc, char *argv[] )
 
         TunnelShell tunnelserver( "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log" );
 
-        tunnelserver.start_link( user_environment, listening_socket, local_private_address, client_private_address, "[tunnelserver " + listening_socket.peer_address().str() + "] ", { shell_path() } );
+        tunnelserver.start_link( user_environment, listening_socket, local_private_address, client_private_address, "[tunnelserver " + listening_socket.peer_address().str() + "] ", command );
         return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );
