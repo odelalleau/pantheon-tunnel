@@ -30,5 +30,5 @@ with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
                 unsorted_log.append( str(server_timestamp) + ' - ' + str(int(size)) + ' ' + str( server_timestamp - client_timestamp ) )
 
 print("# base timestamp: 0" )
-for line in sorted( unsorted_log ):
+for line in sorted( unsorted_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ):
     print(line)
