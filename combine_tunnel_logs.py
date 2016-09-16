@@ -1,34 +1,41 @@
 #!/usr/bin/python
-client_packets = dict()
-with open('/tmp/tunnelclient.egress.log') as client_egress_log:
+received_packets = dict()
+with open('/tmp/tunnelserver.ingress.log') as received_log:
     firstline = True
-    for line in client_egress_log:
+    for line in received_log:
         if firstline:
-            ( _, _, client_initial_timestamp ) = line.split(':')
+            ( _, _, received_initial_timestamp ) = line.split(':')
             firstline = False
         else:
-            (timestamp, uid, size) = line.split('-')
-            client_packets[int(uid)] = (int(timestamp), int(size))
+            (received_timestamp, received_uid, received_size) = line.split('-')
+            received_packets[int(received_uid)] = (int(received_timestamp), int(received_size))
 
-unsorted_log = []
-with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
+client_packets = dict()
+unsorted_combined_log = []
+with open('/tmp/tunnelclient.egress.log') as sent_log:
     firstline = True
-    for line in server_ingress_log:
+    for line in sent_log:
         if firstline:
-            ( _, _, server_initial_timestamp ) = line.split(':')
+            ( _, _, sent_initial_timestamp ) = line.split(':')
             firstline = False
         else:
-            (timestamp, uid, size) = line.split('-')
-            server_timestamp = int(timestamp) - (int(client_initial_timestamp) - int(server_initial_timestamp))
-            if int(uid) in client_packets:
-                (client_timestamp, client_size) = client_packets[int(uid)]
-                if int(size) != client_size:
-                    print("packet " + uid + " came into tunnel with size " + client_size + " but left with size " + size)
-                    assert( False )
-                unsorted_log.append( str(client_timestamp) + ' + ' + str(int(size)) )
-                unsorted_log.append( str(server_timestamp) + ' # ' + str(int(size)) )
-                unsorted_log.append( str(server_timestamp) + ' - ' + str(int(size)) + ' ' + str( server_timestamp - client_timestamp ) )
+            (sent_timestamp, sent_uid, sent_size) = line.split('-')
+            # drop whitespace
+            sent_timestamp = str(int(sent_timestamp))
+            sent_uid = str(int(sent_uid))
+            sent_size = str(int(sent_size))
+
+            unsorted_combined_log.append( sent_timestamp + ' + ' + str(int(sent_size)) )
+            if int(sent_uid) in received_packets:
+                (received_timestamp, received_size) = received_packets[int(sent_uid)]
+                received_timestamp = int(received_timestamp) - (int(sent_initial_timestamp) - int(received_initial_timestamp))
+                if received_size != int(sent_size):
+                    print("packet " + sent_uid + " came into tunnel with size " + sent_size + " but left with size " + str(received_size) )
+                    assert(False)
+                unsorted_combined_log.append( str(received_timestamp) + ' # ' + sent_size )
+                unsorted_combined_log.append( str(received_timestamp) + ' - ' + sent_size + ' ' + str( received_timestamp - int(sent_timestamp) ) )
 
 print("# base timestamp: 0" )
-for line in sorted( unsorted_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ):
+#for line in sorted( unsorted_combined_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ):
+for line in unsorted_combined_log:
     print(line)
