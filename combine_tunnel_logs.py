@@ -26,6 +26,7 @@ with open('/tmp/tunnelserver.ingress.log') as server_ingress_log:
                     print("packet " + uid + " came into tunnel with size " + client_size + " but left with size " + size)
                     assert( False )
                 unsorted_log.append( str(client_timestamp) + ' + ' + str(int(size)) )
+                unsorted_log.append( str(server_timestamp) + ' # ' + str(int(size)) )
                 unsorted_log.append( str(server_timestamp) + ' - ' + str(int(size)) + ' ' + str( server_timestamp - client_timestamp ) )
 
 print("# base timestamp: 0" )
