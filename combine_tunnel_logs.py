@@ -1,6 +1,18 @@
 #!/usr/bin/python
+
+import sys
+
+def usage():
+    print 'Usage:'
+    print sys.argv[0] + ' recieved_packets_log sent_packets_log'
+    sys.exit(1)
+
+
+if len(sys.argv) != 3:
+    usage()
+
 received_packets = dict()
-with open('/tmp/tunnelserver.ingress.log') as received_log:
+with open(sys.argv[1]) as received_log:
     firstline = True
     for line in received_log:
         if firstline:
@@ -12,7 +24,7 @@ with open('/tmp/tunnelserver.ingress.log') as received_log:
 
 client_packets = dict()
 unsorted_combined_log = []
-with open('/tmp/tunnelclient.egress.log') as sent_log:
+with open(sys.argv[2]) as sent_log:
     firstline = True
     for line in sent_log:
         if firstline:
