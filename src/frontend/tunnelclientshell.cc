@@ -40,6 +40,7 @@ int main( int argc, char *argv[] )
         server_socket.connect( server);
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
         const uint64_t uid_to_send = -1;
+        // XXX error better if this write fails because server is not accepting connections
         server_socket.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
 
         TunnelShell tunnelclient( "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log" );
