@@ -16,7 +16,7 @@ with open(sys.argv[1]) as received_log:
     firstline = True
     for line in received_log:
         if firstline:
-            ( _, _, received_initial_timestamp ) = line.split(':')
+            received_initial_timestamp = line.split(':')[-1]
             firstline = False
         else:
             (received_timestamp, received_uid, received_size) = line.split('-')
@@ -28,7 +28,7 @@ with open(sys.argv[2]) as sent_log:
     firstline = True
     for line in sent_log:
         if firstline:
-            ( _, _, sent_initial_timestamp ) = line.split(':')
+            sent_initial_timestamp = line.split(':')[-1]
             firstline = False
         else:
             (sent_timestamp, sent_uid, sent_size) = line.split('-')
