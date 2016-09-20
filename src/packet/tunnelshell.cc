@@ -65,6 +65,9 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
     outside_shell_loop.add_child_process( "packetshell", [&]() { // XXX add special child process?
             TunDevice tun( "tunnel", local_private_address, peer_private_address );
 
+            interface_ioctl( SIOCSIFMTU, "tunnel",
+                             [] ( ifreq &ifr ) { ifr.ifr_mtu = 1460; } );
+
             /* bring up localhost */
             interface_ioctl( SIOCSIFFLAGS, "lo",
                              [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_UP; } );
