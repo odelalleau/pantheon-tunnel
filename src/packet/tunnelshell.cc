@@ -16,8 +16,14 @@
 #include "exception.hh"
 #include "config.h"
 
+#define UDP_PACKET_HEADER_SIZE 28
+
 using namespace std;
 using namespace PollerShortNames;
+
+struct wrapped_packet_header {
+    uint64_t uid;
+};
 
 TunnelShell::TunnelShell( const std::string & ingress_logfile,
                 const std::string & egress_logfile )
@@ -108,12 +114,12 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     [&] () {
                     const string packet = tun.read();
 
-                    const uint64_t uid_to_send = uid_++;
+                    const struct wrapped_packet_header to_send = { uid_++ };
 
-                    string uid_wrapped_packet = string( (char *) &uid_to_send, sizeof(uid_to_send) ) + packet;
+                    string uid_wrapped_packet = string( (char *) &to_send, sizeof(struct wrapped_packet_header) ) + packet;
 
                     if ( egress_log ) {
-                    *egress_log << timestamp() << " - " << uid_to_send << " - " << uid_wrapped_packet.length() << endl;
+                    *egress_log << timestamp() << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     peer_socket.write( uid_wrapped_packet );
@@ -126,15 +132,16 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     [&] () {
                     const string packet = peer_socket.read();
 
-                    uint64_t uid_received = *( (uint64_t *) packet.data() );
-                    string contents = packet.substr( sizeof(uid_received) );
+                    const struct wrapped_packet_header header_received = *( (struct wrapped_packet_header *) packet.data() );
+
+                    string contents = packet.substr( sizeof(struct wrapped_packet_header) );
                     if ( contents.empty() ) {
-                        cerr << "packet empty besides uid " << uid_received << endl;
+                        cerr << "packet empty besides uid " << header_received.uid << endl;
                         return ResultType::Exit;
                     }
 
                     if ( ingress_log ) {
-                    *ingress_log << timestamp() << " - " << uid_received << " - " << packet.length() << endl;
+                    *ingress_log << timestamp() << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     tun.write( contents );
