@@ -26,7 +26,7 @@ void assign_address( const std::string & device_name, const Address & addr, cons
 class TunDevice : public FileDescriptor
 {
 public:
-    TunDevice( const std::string & name, const Address & addr, const Address & peer );
+    TunDevice( const std::string & name, const Address & addr, const Address & peer, const bool tun_header = true );
 };
 
 class VirtualEthernetPair

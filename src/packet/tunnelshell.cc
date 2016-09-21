@@ -69,10 +69,10 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
 
     /* Fork */
     outside_shell_loop.add_child_process( "packetshell", [&]() { // XXX add special child process?
-            TunDevice tun( "tunnel", local_private_address, peer_private_address );
+            TunDevice tun( "tunnel", local_private_address, peer_private_address, false );
 
             interface_ioctl( SIOCSIFMTU, "tunnel",
-                             [] ( ifreq &ifr ) { ifr.ifr_mtu = 1460; } );
+                             [] ( ifreq &ifr ) { ifr.ifr_mtu = 1500 - UDP_PACKET_HEADER_SIZE - sizeof( wrapped_packet_header ); } );
 
             /* bring up localhost */
             interface_ioctl( SIOCSIFFLAGS, "lo",

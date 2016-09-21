@@ -20,11 +20,17 @@ using namespace std;
 
 TunDevice::TunDevice( const string & name,
                       const Address & addr,
-                      const Address & peer )
+                      const Address & peer,
+                      const bool tun_header )
     : FileDescriptor( SystemCall( "open /dev/net/tun", open( "/dev/net/tun", O_RDWR ) ) )
 {
-    interface_ioctl( *this, TUNSETIFF, name,
-                     [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_TUN; } );
+    if ( tun_header ) {
+        interface_ioctl( *this, TUNSETIFF, name,
+                         [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_TUN; } );
+    } else {
+        interface_ioctl( *this, TUNSETIFF, name,
+                         [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_TUN | IFF_NO_PI; } );
+    }
 
     assign_address( name, addr, peer );
 }
