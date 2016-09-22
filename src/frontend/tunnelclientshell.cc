@@ -39,9 +39,9 @@ int main( int argc, char *argv[] )
         /* connect the server_socket to the server_address */
         server_socket.connect( server);
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
-        //const uint64_t uid_to_send = -1;
         // XXX error better if this write fails because server is not accepting connections
-        //server_socket.write( string( (char *) &uid_to_send, sizeof(uid_to_send) ) );
+        const struct wrapped_packet_header to_send = { (uint64_t) -1 };
+        server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
         TunnelShell tunnelclient( "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log" );
         tunnelclient.start_link( user_environment, server_socket, local_private_address, server_private_address,
