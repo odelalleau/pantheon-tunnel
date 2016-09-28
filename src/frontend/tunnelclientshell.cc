@@ -37,7 +37,7 @@ int main( int argc, char *argv[] )
 
         UDPSocket server_socket;
         /* connect the server_socket to the server_address */
-        server_socket.connect( server);
+        server_socket.connect( server );
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
         // XXX error better if this write fails because server is not accepting connections
         const struct wrapped_packet_header to_send = { (uint64_t) -1 };
