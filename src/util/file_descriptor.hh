@@ -40,7 +40,7 @@ public:
 
     /* read and write methods */
     virtual std::string read( const size_t limit = BUFFER_SIZE );
-    std::string::const_iterator write( const std::string & buffer, const bool write_all = true );
+    virtual std::string::const_iterator write( const std::string & buffer, const bool write_all = true );
     std::string::const_iterator write( const std::string::const_iterator & begin,
                                        const std::string::const_iterator & end );
 

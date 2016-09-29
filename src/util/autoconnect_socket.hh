@@ -18,12 +18,21 @@ class AutoconnectSocket : public UDPSocket
         {
             if ( not connected_ ) {
                 std::pair<Address, std::string> recpair = UDPSocket::recvfrom();
-                std::cout << "got connection from " << recpair.first.ip() << std::endl;
+                std::cerr << "got connection from " << recpair.first.ip() << std::endl;
                 UDPSocket::connect( recpair.first );
                 connected_ = true;
                 return recpair.second;
             } 
             return UDPSocket::read( );
+        };
+
+        std::string::const_iterator write( const std::string & buffer, const bool write_all = true ) override
+        {
+            if ( not connected_ ) {
+                std::cerr << "Dropping packet sent before tunnelclient connected" << std::endl;
+                return buffer.begin();
+            }
+            return UDPSocket::write( buffer, write_all );
         };
 };
 
