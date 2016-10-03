@@ -48,6 +48,5 @@ with open(sys.argv[2]) as sent_log:
                 unsorted_combined_log.append( str(received_timestamp) + ' - ' + sent_size + ' ' + str( received_timestamp - int(sent_timestamp) ) )
 
 print("# base timestamp: 0" )
-#for line in sorted( unsorted_combined_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ):
-for line in unsorted_combined_log:
+for line in sorted( unsorted_combined_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ): # stable sort based on timestamp
     print(line)
