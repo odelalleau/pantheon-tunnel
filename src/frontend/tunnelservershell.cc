@@ -3,11 +3,21 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <getopt.h>
 
 #include "autoconnect_socket.hh"
 #include "tunnelshell.cc"
 
 using namespace std;
+
+void usage_error( const string & program_name )
+{
+    cerr << "Usage: " << program_name << " [OPTION]... [COMMAND]" << endl;
+    cerr << endl;
+    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME" << endl;
+
+    throw runtime_error( "invalid arguments" );
+}
 
 int main( int argc, char *argv[] )
 {
@@ -19,15 +29,50 @@ int main( int argc, char *argv[] )
         check_requirements( argc, argv );
 
         if ( argc < 1 ) {
-            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " [command...]" );
+            usage_error( argv[ 0 ] );
+        }
+
+        const option command_line_options[] = {
+            { "ingress-log", required_argument, nullptr, 'i' },
+            { "egress-log",  required_argument, nullptr, 'e' },
+            { 0,                             0, nullptr, 0 }
+        };
+
+        string ingress_logfile = "/tmp/tunnelserver.ingress.log";
+        string egress_logfile = "/tmp/tunnelserver.egress.log";
+
+        while ( true ) {
+            const int opt = getopt_long( argc, argv, "i:e:",
+                                         command_line_options, nullptr );
+            if ( opt == -1 ) { /* end of options */
+                break;
+            }
+
+            switch ( opt ) {
+            case 'i':
+                ingress_logfile = optarg;
+                break;
+            case 'e':
+                egress_logfile = optarg;
+                break;
+            case '?':
+                usage_error( argv[ 0 ] );
+            default:
+                throw runtime_error( "getopt_long: unexpected return value " +
+                                     to_string( opt ) );
+            }
+        }
+
+        if ( optind > argc ) {
+            usage_error( argv[ 0 ] );
         }
 
         vector< string > command;
 
-        if ( argc == 1 ) {
+        if ( optind == argc ) {
             command.push_back( shell_path() );
         } else {
-            for ( int i = 1; i < argc; i++ ) {
+            for ( int i = optind; i < argc; i++ ) {
                 command.push_back( argv[ i ] );
             }
         }
@@ -40,7 +85,7 @@ int main( int argc, char *argv[] )
         listening_socket.bind( Address() );
         cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " " << client_private_address.ip() << " " << local_private_address.ip() << endl;
 
-        TunnelShell tunnelserver( "/tmp/tunnelserver.ingress.log", "/tmp/tunnelserver.egress.log" );
+        TunnelShell tunnelserver( ingress_logfile, egress_logfile );
 
         tunnelserver.start_link( user_environment, listening_socket, local_private_address, client_private_address, "[tunnelserver] ", command );
         return tunnelserver.wait_for_exit();
