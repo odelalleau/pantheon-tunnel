@@ -38,8 +38,7 @@ int main( int argc, char *argv[] )
             { 0,                             0, nullptr, 0 }
         };
 
-        string ingress_logfile = "/tmp/tunnelserver.ingress.log";
-        string egress_logfile = "/tmp/tunnelserver.egress.log";
+        string ingress_logfile, egress_logfile;
 
         while ( true ) {
             const int opt = getopt_long( argc, argv, "i:e:",
