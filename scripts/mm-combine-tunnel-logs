@@ -2,51 +2,60 @@
 
 import sys
 
+
 def usage():
     print 'Usage:'
-    print sys.argv[0] + ' recieved_packets_log sent_packets_log'
+    print sys.argv[0] + ' received_packets_log sent_packets_log'
     sys.exit(1)
 
 
-if len(sys.argv) != 3:
-    usage()
+def main():
+    if len(sys.argv) != 3:
+        usage()
 
-received_packets = dict()
-with open(sys.argv[1]) as received_log:
-    firstline = True
-    for line in received_log:
-        if firstline:
-            received_initial_timestamp = line.split(':')[-1]
-            firstline = False
-        else:
-            (received_timestamp, received_uid, received_size) = line.split('-')
-            received_packets[int(received_uid)] = (int(received_timestamp), int(received_size))
+    send_pkts = {}
+    # sent_packets_log
+    with open(sys.argv[2]) as send_log:
+        # retrieve base timestamp from the first line
+        line = send_log.readline()
+        send_base_ts = int(line.rsplit(':', 1)[-1])
 
-client_packets = dict()
-unsorted_combined_log = []
-with open(sys.argv[2]) as sent_log:
-    firstline = True
-    for line in sent_log:
-        if firstline:
-            sent_initial_timestamp = line.split(':')[-1]
-            firstline = False
-        else:
-            (sent_timestamp, sent_uid, sent_size) = line.split('-')
-            # drop whitespace
-            sent_timestamp = str(int(sent_timestamp))
-            sent_uid = str(int(sent_uid))
-            sent_size = str(int(sent_size))
+        for line in send_log:
+            (send_ts, send_uid, send_size) = map(int, line.split('-'))
+            send_pkts[send_uid] = (send_ts, send_size)
 
-            unsorted_combined_log.append( sent_timestamp + ' + ' + str(int(sent_size)) )
-            if int(sent_uid) in received_packets:
-                (received_timestamp, received_size) = received_packets[int(sent_uid)]
-                received_timestamp = int(received_timestamp) - (int(sent_initial_timestamp) - int(received_initial_timestamp))
-                if received_size != int(sent_size):
-                    print("packet " + sent_uid + " came into tunnel with size " + sent_size + " but left with size " + str(received_size) )
-                    assert(False)
-                unsorted_combined_log.append( str(received_timestamp) + ' # ' + sent_size )
-                unsorted_combined_log.append( str(received_timestamp) + ' - ' + sent_size + ' ' + str( received_timestamp - int(sent_timestamp) ) )
+    last_ts = 0
+    # received_packets_log
+    with open(sys.argv[1]) as recv_log:
+        # retrieve base timestamp from the first line
+        line = recv_log.readline()
+        recv_base_ts = int(line.rsplit(':', 1)[-1])
+        print '# base timestamp: ' + recv_base_ts
+        base_ts_delta = recv_base_ts - send_base_ts
 
-print("# base timestamp: 0" )
-for line in sorted( unsorted_combined_log, cmp=lambda x,y: cmp(int(x.split()[0]), int(y.split()[0])) ): # stable sort based on timestamp
-    print(line)
+        for line in recv_log:
+            (recv_ts, recv_uid, recv_size) = map(int, line.split('-'))
+            # timestamps went backward
+            if recv_ts < last_ts:
+                sys.stderr.write('Timestamps went backward!\n')
+                sys.exit(1)
+            else:
+                last_ts = recv_ts
+
+            (send_ts, send_size) = send_pkts[recv_uid]
+            # inconsistent packet size
+            if send_size != recv_size:
+                sys.stderr.write('Packet %s came into tunnel with size %s '
+                                 ' but left with size %s\n' %
+                                 (send_uid, send_size, recv_size))
+                sys.exit(1)
+
+            # output timestamp on the receiver side, received packet size
+            # and one-way delay
+            print '%s - %s %s' % (recv_ts, recv_size,
+                                  recv_ts - send_ts + base_ts_delta)
+
+
+if __name__ == '__main__':
+    main()
+
