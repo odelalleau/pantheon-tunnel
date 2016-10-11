@@ -13,49 +13,71 @@ def main():
     if len(sys.argv) != 3:
         usage()
 
+    recv_log = open(sys.argv[1])
+    send_log = open(sys.argv[2])
     send_pkts = {}
-    # sent_packets_log
-    with open(sys.argv[2]) as send_log:
-        # retrieve base timestamp from the first line
-        line = send_log.readline()
-        send_base_ts = int(line.rsplit(':', 1)[-1])
 
-        for line in send_log:
-            (send_ts, send_uid, send_size) = map(int, line.split('-'))
-            send_pkts[send_uid] = (send_ts, send_size)
+    # retrieve initial timestamp of sender from the first line
+    line = send_log.readline()
+    send_init_ts = int(line.rsplit(':', 1)[-1])
+    print '# init timestamp: %s' % send_init_ts
+    print '# base timestamp: 0'
 
-    last_ts = 0
-    # received_packets_log
-    with open(sys.argv[1]) as recv_log:
-        # retrieve base timestamp from the first line
-        line = recv_log.readline()
-        recv_base_ts = int(line.rsplit(':', 1)[-1])
-        print '# base timestamp: ' + recv_base_ts
-        base_ts_delta = recv_base_ts - send_base_ts
+    # construct a hash table using uid as keys
+    for line in send_log:
+        (send_ts, send_uid, send_size) = map(int, line.split('-'))
+        send_pkts[send_uid] = (send_ts, send_size)
 
-        for line in recv_log:
-            (recv_ts, recv_uid, recv_size) = map(int, line.split('-'))
-            # timestamps went backward
-            if recv_ts < last_ts:
-                sys.stderr.write('Timestamps went backward!\n')
-                sys.exit(1)
+    send_log.seek(0)
+    send_log.readline()
+
+    # retrieve initial timestamp of receiver from the first line
+    line = recv_log.readline()
+    recv_init_ts = int(line.rsplit(':', 1)[-1])
+    init_ts_delta = recv_init_ts - send_init_ts
+
+    # merge two sorted logs into one
+    send_l = send_log.readline()
+    if send_l:
+        (send_ts, send_uid, send_size) = map(int, send_l.split('-'))
+    recv_l = recv_log.readline()
+    if recv_l:
+        (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
+        # packet's received time in sender's clock
+        recv_ts_send = recv_ts + init_ts_delta
+
+    while send_l or recv_l:
+        if (send_l and recv_l and send_ts <= recv_ts_send) or not recv_l:
+            print '%s + %s' % (send_ts, send_size)
+            send_l = send_log.readline()
+            if send_l:
+                (send_ts, send_uid, send_size) = map(int, send_l.split('-'))
+        elif (send_l and recv_l and send_ts > recv_ts_send) or not send_l:
+            if recv_uid in send_pkts:
+                (paired_send_ts, paired_send_size) = send_pkts[recv_uid]
+                # inconsistent packet size
+                if paired_send_size != recv_size:
+                    sys.stderr.write('Packet %s came into tunnel with size %s '
+                                     'but left with size %s\n' %
+                                     (recv_uid, paired_send_size, recv_size))
+                    sys.exit(1)
             else:
-                last_ts = recv_ts
-
-            (send_ts, send_size) = send_pkts[recv_uid]
-            # inconsistent packet size
-            if send_size != recv_size:
-                sys.stderr.write('Packet %s came into tunnel with size %s '
-                                 ' but left with size %s\n' %
-                                 (send_uid, send_size, recv_size))
+                # nonexistent packet
+                sys.stderr.write('Received a packet with nonexistent '
+                                 'uid %s\n' % recv_uid)
                 sys.exit(1)
 
-            # output timestamp on the receiver side, received packet size
-            # and one-way delay
-            print '%s - %s %s' % (recv_ts, recv_size,
-                                  recv_ts - send_ts + base_ts_delta)
+            delay = recv_ts_send - paired_send_ts
+            print '%s - %s %s' % (recv_ts_send, recv_size, delay)
+            recv_l = recv_log.readline()
+            if recv_l:
+                (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
+                # packet's received time in sender's clock
+                recv_ts_send = recv_ts + init_ts_delta
+
+    recv_log.close()
+    send_log.close()
 
 
 if __name__ == '__main__':
     main()
-
