@@ -3,10 +3,20 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <getopt.h>
 
 #include "tunnelshell.cc"
 
 using namespace std;
+
+void usage_error( const string & program_name )
+{
+    cerr << "Usage: " << program_name << " IP PORT LOCAL-PRIVATE-IP SERVER-PRIVATE-IP [OPTION]... [COMMAND]" << endl;
+    cerr << endl;
+    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME" << endl;
+
+    throw runtime_error( "invalid arguments" );
+}
 
 int main( int argc, char *argv[] )
 {
@@ -18,19 +28,53 @@ int main( int argc, char *argv[] )
         check_requirements( argc, argv );
 
         if ( argc < 5 ) {
-            throw runtime_error( "Usage: " + string( argv[ 0 ] ) + " IP PORT LOCAL-PRIVATE-IP SERVER-PRIVATE-IP [command...]" );
+            usage_error( argv[ 0 ] );
         }
 
-        const Address server{ argv[ 1 ], argv[ 2 ] };
-        const Address local_private_address { argv[ 3 ], "0" };
-        const Address server_private_address { argv[ 4 ], "0" };
+        const option command_line_options[] = {
+            { "ingress-log", required_argument, nullptr, 'i' },
+            { "egress-log",  required_argument, nullptr, 'e' },
+            { 0,                             0, nullptr, 0 }
+        };
+
+        string ingress_logfile, egress_logfile;
+
+        while ( true ) {
+            const int opt = getopt_long( argc, argv, "i:e:",
+                                         command_line_options, nullptr );
+            if ( opt == -1 ) { /* end of options */
+                break;
+            }
+
+            switch ( opt ) {
+            case 'i':
+                ingress_logfile = optarg;
+                break;
+            case 'e':
+                egress_logfile = optarg;
+                break;
+            case '?':
+                usage_error( argv[ 0 ] );
+            default:
+                throw runtime_error( "getopt_long: unexpected return value " +
+                                     to_string( opt ) );
+            }
+        }
+
+        if ( optind + 4 > argc ) {
+            usage_error( argv[ 0 ] );
+        }
+
+        const Address server{ argv[ optind ], argv[ optind + 1 ] };
+        const Address local_private_address { argv[ optind + 2 ], "0" };
+        const Address server_private_address { argv[ optind + 3 ], "0" };
 
         vector< string > command;
 
-        if ( argc == 5 ) {
+        if ( optind + 4 == argc ) {
             command.push_back( shell_path() );
         } else {
-            for ( int i = 5; i < argc; i++ ) {
+            for ( int i = optind + 4; i < argc; i++ ) {
                 command.push_back( argv[ i ] );
             }
         }
@@ -43,7 +87,7 @@ int main( int argc, char *argv[] )
         const struct wrapped_packet_header to_send = { (uint64_t) -1 };
         server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
-        TunnelShell tunnelclient( "/tmp/tunnelclient.ingress.log", "/tmp/tunnelclient.egress.log" );
+        TunnelShell tunnelclient( ingress_logfile, egress_logfile );
         tunnelclient.start_link( user_environment, server_socket, local_private_address, server_private_address,
                 "[tunnelclient " + server.str() + "] ", command );
         return tunnelclient.wait_for_exit();
