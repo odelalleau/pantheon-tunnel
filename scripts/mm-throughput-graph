@@ -2,193 +2,243 @@
 
 use warnings;
 use strict;
-use POSIX;
 
-sub usage
-{
+sub usage {
   die qq{Usage: $0 MS_PER_BIN [filename]\n};
 }
 
-if ( scalar @ARGV < 1 or scalar @ARGV > 2 ) {
+if (scalar @ARGV < 1 or scalar @ARGV > 2) {
   usage;
 }
 
 my $MS_PER_BIN = shift;
 
-if ( $MS_PER_BIN !~ m{^\d+$} ) {
+if ($MS_PER_BIN !~ m{^\d+$}) {
   usage;
 }
 
 sub ms_to_bin {
-  return int( $_[0] / $MS_PER_BIN );
+  return int($_[0] / $MS_PER_BIN);
 }
 
 sub bin_to_seconds {
   return sprintf q{%.3f}, $_[0] * $MS_PER_BIN / 1000.0;
 }
 
-my ( %capacity, %arrivals, %departures );
+sub default {
+  return defined $_[0] ? $_[0] : 0;
+}
 
-my $first_timestamp = undef;
-my $last_timestamp = undef;
 my $base_timestamp = undef;
-my $capacity_sum;
-my $arrival_sum;
-my $departure_sum;
-my @delays;
-my %signal_delay;
 
-LINE: while ( <> ) {
+while (<>) {
   chomp;
 
-  if ( m{^# base timestamp: (\d+)} ) {
-    if ( defined $base_timestamp ) {
+  if (m{^# base timestamp: (\d+)}) {
+    if (defined $base_timestamp) {
       die "base timestamp multiply defined";
     } else {
       $base_timestamp = $1;
     }
-    next LINE;
-  } elsif ( m{^#} ) {
-    next LINE;
+    last;
   }
+}
 
+if (not defined $base_timestamp) {
+  die "logfile is missing base timestamp";
+}
+
+my %flows;
+my (%capacity, $capacity_sum);
+
+# 0 index of the following variables represents the total value of all flows
+my (%arrivals, %departures);
+my (%arrival_sum, %departure_sum);
+my (%first_ts, %last_ts);
+my (%delays, %signal_delay);
+
+while (<>) {
   # parse and validate line
-  my ( $timestamp, $event_type, $num_bytes, $delay ) = split /\s+/, $_;
+  my @line = split;
+  my ($timestamp, $event_type, $num_bytes) = @line[0..2];
 
-  if ( not defined $num_bytes ) {
-    die q{Format: timestamp event_type num_bytes [delay]};
+  if (not defined $num_bytes) {
+    die q{Format: timestamp event_type num_bytes [delay] [flow_id]};
   }
 
-  if ( $timestamp !~ m{^\d+$} ) {
+  if ($timestamp !~ m{^\d+$}) {
     die qq{Invalid timestamp: $timestamp};
   }
 
-  if ( $num_bytes !~ m{^\d+$} ) {
+  if ($num_bytes !~ m{^\d+$}) {
     die qq{Invalid byte count: $num_bytes};
-  }
-
-  if ( not defined $base_timestamp ) {
-    die "logfile is missing base timestamp";
   }
 
   $timestamp -= $base_timestamp; # correct for startup time variation
 
-  if ( not defined $last_timestamp ) {
-    $last_timestamp = $first_timestamp = $timestamp;
-  }
-
-  $last_timestamp = max( $timestamp, $last_timestamp );
-
   my $num_bits = $num_bytes * 8;
-  my $bin = ms_to_bin( $timestamp );
+  my $bin = ms_to_bin($timestamp);
+  my $flow_id = 0;
 
   # process the event
-  if ( $event_type eq q{+} ) {
-    $arrivals{ $bin } += $num_bits;
-    $arrival_sum += $num_bits;
-  } elsif ( $event_type eq q{#} ) {
-    $capacity{ $bin } += $num_bits;
+  if ($event_type eq q{#}) {
+    $capacity{$bin} += $num_bits;
     $capacity_sum += $num_bits;
-  } elsif ( $event_type eq q{-} ) {
-    if ( not defined $delay ) {
-      die q{Departure format: timestamp - num_bytes delay};
-    }
-    $departures{ $bin } += $num_bits;
-
-    if ( $delay < 0 ) {
-	die qq{Invalid delay: $delay};
-    }
-
-    if ( $timestamp - $delay < 0 ) {
-	die qq{Invalid timestamp and delay: ts=$timestamp, delay=$delay};
-    }
-
-    push @delays, $delay;
-    $departure_sum += $num_bits;
-
-    $signal_delay{ $timestamp - $delay } = min( $delay,
-						(defined $signal_delay{ $timestamp - $delay })
-						? $signal_delay{ $timestamp - $delay }
-						: POSIX::DBL_MAX );
   } else {
-    die qq{Unknown event type: $event_type};
-  }
-}
+    my @flow_tuple = (0);
 
-sub min {
-  my $minval = POSIX::DBL_MAX;
+    if ($event_type eq q{+}) {
+      if (scalar @line == 4) {
+        $flow_id = $line[3];
+        if ($flow_id !~ m{^\d+$} or $flow_id <= 0) {
+          die qq{Invalid flow ID: $flow_id};
+        }
+        $flows{$flow_id} = 1;
+        push @flow_tuple, $flow_id;
+      } elsif (keys %flows) {
+        die q{Invalid format: some events end with flow IDs while some not};
+      }
 
-  for ( @_ ) {
-    if ( $_ < $minval ) {
-      $minval = $_;
+      for my $id (@flow_tuple) {
+        $arrivals{$id}{$bin} += $num_bits;
+        $arrival_sum{$id} += $num_bits;
+      }
+    } elsif ($event_type eq q{-}) {
+      my $delay = $line[3];
+
+      if (not defined $delay) {
+        die q{Departure format: timestamp - num_bytes delay [flow_id]};
+      }
+
+      if ($delay < 0) {
+        die qq{Invalid delay: $delay};
+      }
+
+      if ($timestamp - $delay < 0) {
+        die qq{Invalid timestamp and delay: ts=$timestamp, delay=$delay};
+      }
+
+      if (scalar @line == 5) {
+        $flow_id = $line[4];
+        if ($flow_id !~ m{^\d+$} or $flow_id <= 0) {
+          die qq{Invalid flow ID: $flow_id};
+        }
+        $flows{$flow_id} = 1;
+        push @flow_tuple, $flow_id;
+      } elsif (keys %flows) {
+        die q{Invalid format: Some events end with flow IDs while some not};
+      }
+
+      for my $id (@flow_tuple) {
+        $departures{$id}{$bin} += $num_bits;
+        $departure_sum{$id} += $num_bits;
+        push @{$delays{$id}}, $delay;
+
+        my $ref = \$signal_delay{$id}{$timestamp - $delay};
+        if (not defined $$ref or (defined $$ref and $delay < $$ref)) {
+          $$ref = $delay;
+        }
+      }
+    } else {
+      die qq{Unknown event type: $event_type};
+    }
+
+    for my $id (@flow_tuple) {
+      if (not defined $first_ts{$id} or $timestamp < $first_ts{$id}) {
+        $first_ts{$id} = $timestamp;
+      }
+      if (not defined $last_ts{$id} or $timestamp > $last_ts{$id}) {
+        $last_ts{$id} = $timestamp;
+      }
     }
   }
-
-  return $minval;
 }
 
-sub max {
-  my $maxval = - POSIX::DBL_MAX;
-
-  for ( @_ ) {
-    if ( $_ > $maxval ) {
-      $maxval = $_;
-    }
-  }
-
-  return $maxval;
+if (not defined $first_ts{0}) {
+  die q{Must have at least one event};
 }
 
-if ( not defined $first_timestamp ) {
-    die q{Must have at least one event};
-}
-
-# calculate statistics
-my $duration = ($last_timestamp - $first_timestamp) / 1000.0;
-my $average_capacity = ($capacity_sum / $duration) / 1000000.0;
-my $average_ingress = ($arrival_sum / $duration) / 1000000.0;
-my $average_throughput = ($departure_sum / $duration) / 1000000.0;
-
-if ( scalar @delays == 0 ) {
-  die q{Must have at least one departure event};
-}
-
-@delays = sort { $a <=> $b } @delays;
-
-my $pp95 = $delays[ 0.95 * scalar @delays ];
-
-# measure signal delay every millisecond
-# = minimum time for a message created at time t to get to receiver
-my @signal_delay_samples = sort { $a <=> $b } keys %signal_delay;
-
-for ( my $ts = $signal_delay_samples[ -1 ]; $ts >= $signal_delay_samples[ 0 ]; $ts-- ) {
-  if ( not defined $signal_delay{ $ts } ) {
-    $signal_delay{ $ts } = $signal_delay{ $ts + 1 } + 1;
-  }
-}
-
-my @signal_delays = sort { $a <=> $b } values %signal_delay;
-my $pp95s = $signal_delays[ 0.95 * scalar @signal_delays ];
-
-printf STDERR qq{Average capacity: %.2f Mbits/s\n}, $average_capacity;
-printf STDERR qq{Average throughput: %.2f Mbits/s (%.1f%% utilization)\n}, $average_throughput, 100.0 * $average_throughput / $average_capacity;
-printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n}, $pp95;
-printf STDERR qq{95th percentile signal delay: %.0f ms\n}, $pp95s;
-
-# make graph
-my $earliest_bin = min( keys %arrivals, keys %capacity, keys %departures );
-my $latest_bin = max( keys %arrivals, keys %capacity, keys %departures );
-
-if ( $earliest_bin == $latest_bin ) {
+my $first_bin = ms_to_bin($first_ts{0});
+my $last_bin = ms_to_bin($last_ts{0});
+if ($first_bin == $last_bin) {
   die q{MS_PER_BIN is too large for length of trace};
 }
 
-my $current_buffer_occupancy = 0;
+$flows{0} = 1;
+my @flow_ids = sort {$a <=> $b} keys %flows;
 
-sub default {
-  return defined $_[ 0 ] ? $_[ 0 ] : 0;
+my (%duration, %avg_ingress, %avg_throughput, $avg_capacity);
+
+# calculate statistics
+for my $id (@flow_ids) {
+  $duration{$id} = ($last_ts{$id} - $first_ts{$id}) / 1000.0;
+  $avg_ingress{$id} = ($arrival_sum{$id} / $duration{$id}) / 1000000.0;
+  $avg_throughput{$id} = ($departure_sum{$id} / $duration{$id}) / 1000000.0;
+
+  @{$delays{$id}} = sort {$a <=> $b} @{$delays{$id}};
+  my $p95 = $delays{$id}[0.95 * scalar @{$delays{$id}}];
+
+  # measure signal delay every millisecond
+  # = minimum time for a message created at time t to get to receiver
+  my @sent_time = sort {$a <=> $b} keys %{$signal_delay{$id}};
+
+  for (my $ts = $sent_time[-1]; $ts >= $sent_time[0]; $ts--) {
+    if (not defined $signal_delay{$id}{$ts}) {
+      $signal_delay{$id}{$ts} = $signal_delay{$id}{$ts + 1} + 1;
+    }
+  }
+
+  my @signal_delays = sort {$a <=> $b} values %{$signal_delay{$id}};
+  my $p95s = $signal_delays[0.95 * scalar @signal_delays];
+
+  if ($id == 0) {
+    printf STDERR qq{-- Total:\n};
+    if (defined $capacity_sum) {
+      $avg_capacity = ($capacity_sum / $duration{$id}) / 1000000.0;
+      printf STDERR qq{Average capacity: %.2f Mbits/s\n}, $avg_capacity;
+    }
+    printf STDERR qq{Average throughput: %.2f Mbits/s}, $avg_throughput{$id};
+    if (defined $avg_capacity) {
+      printf STDERR qq{ (%.1f%% utilization)},
+             100.0 * $avg_throughput{$id} / $avg_capacity;
+    }
+    printf STDERR qq{\n};
+  } else {
+    printf STDERR qq{-- Flow $id:\n};
+    printf STDERR qq{Active duration: %.2f s - %.2f s\n},
+           $first_ts{$id} / 1000.0, $last_ts{$id} / 1000.0;
+    printf STDERR qq{Average throughput: %.2f Mbits/s\n}, $avg_throughput{$id};
+  }
+
+  printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n}, $p95;
+  printf STDERR qq{95th percentile signal delay: %.0f ms\n}, $p95s;
 }
 
+# prepare data file
+my $filename = "/tmp/mm-throughput-graph-data-file";
+open my $data_file, '>', $filename or die "Could not open file '$filename' $!";
+
+my $US_PER_BIN = $MS_PER_BIN * 1000.0;
+for (my $bin = $first_bin; $bin <= $last_bin; $bin++) {
+  my $t = bin_to_seconds($bin);
+  print $data_file qq{$t};
+
+  if (defined $capacity_sum) {
+    my $cap = (default $capacity{$bin}) / $US_PER_BIN;
+    print $data_file qq{ $cap};
+  }
+
+  for my $id (@flow_ids) {
+    my ($arr, $dep) = map {(default $_) / $US_PER_BIN}
+                          ($arrivals{$id}{$bin}, $departures{$id}{$bin});
+    print $data_file qq{ $arr $dep};
+  }
+  print $data_file qq{\n};
+}
+
+close $data_file;
+
+# make graph
 open GNUPLOT, q{| gnuplot} or die;
 
 print GNUPLOT <<END;
@@ -196,29 +246,43 @@ set xlabel "time (s)"
 set ylabel "throughput (Mbits/s)"
 set key center outside top horizontal
 set style fill solid 0.2 noborder
-set terminal svg size 1024,560 fixed  fname 'Arial'  fsize 12 rounded solid mouse standalone name "Throughput"
 set output "/dev/stdout"
 END
 
-printf GNUPLOT qq{plot [%f:%f] "-" using 1:2 title "Capacity (mean %.2f Mbits/s)" with filledcurves above x1 lw 0.5, "-" using 1:3 with lines lc rgb "#0020a0" lw 4 title "Traffic ingress (mean %.2f Mbits/s)", "-" using 1:4 with lines lc rgb "#ff6040" lw 2 title "Traffic egress (mean %.2f Mbits/s)"\n},
-  $first_timestamp / 1000.0, $last_timestamp / 1000.0, $average_capacity, $average_ingress, $average_throughput;
+print GNUPLOT qq{set terminal svg size 1024,560 fixed fname 'Arial' fsize 12} .
+              qq{ rounded solid mouse standalone name "Throughput"\n};
 
-my $output;
+printf GNUPLOT qq{plot [%f:%f] "$filename" },
+       $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
 
-for ( my $bin = $earliest_bin; $bin <= $latest_bin; $bin++ ) {
-    my $t = bin_to_seconds( $bin );
-    my ( $cap, $arr, $dep ) = map { (default $_) / ($MS_PER_BIN / 1000.0) / 1000000.0 } ( $capacity{ $bin }, $arrivals{ $bin }, $departures{ $bin } );
-
-    $current_buffer_occupancy += default $arrivals{ $bin };
-    $current_buffer_occupancy -= default $departures{ $bin };
-
-    $output .= qq{$t $cap $arr $dep $current_buffer_occupancy\n};
+my $col = 2;
+if (defined $avg_capacity) {
+  printf GNUPLOT qq{using 1:$col title} .
+         qq{"Capacity (mean %.2f Mbits/s)" with filledcurves above x1 lw 0.5},
+         $avg_capacity;
+  $col += 1;
 }
 
-print GNUPLOT $output;
-print GNUPLOT qq{\ne\n};
-print GNUPLOT $output;
-print GNUPLOT qq{\ne\n};
-print GNUPLOT $output;
+my $color = 0;
+my @colors = ("#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF",
+              "#FF00FF", "#C0C0C0", "#808080", "#800000", "#808000",
+              "#008000", "#800080", "#008080", "#000080");
+
+for my $id (@flow_ids) {
+  my $flow_str = $id > 0 ? "Flow $id" : "Total";
+  my $lw = $id > 0 ? 2 : 4;
+  my $quotes = defined $avg_capacity ? qq{, ""} : "";
+
+  printf GNUPLOT qq{%s using 1:%d with lines lc rgb "%s" lw %d } .
+         qq{title "%s traffic ingress (mean %.2f Mbits/s)"} .
+         qq{, "" using 1:%d with lines lc rgb "%s" lw %d } .
+         qq{title "%s traffic egress (mean %.2f Mbits/s)"},
+         $quotes, $col, $colors[$color], $lw + 1, $flow_str, $avg_ingress{$id},
+         $col + 1, $colors[$color + 1], $lw, $flow_str, $avg_throughput{$id};
+
+  $col += 2;
+  $color = ($color + 2) % scalar @colors;
+}
+print GNUPLOT qq{\n};
 
 close GNUPLOT or die qq{$!};
