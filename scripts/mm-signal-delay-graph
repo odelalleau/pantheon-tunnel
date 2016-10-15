@@ -35,7 +35,6 @@ if (not defined $base_timestamp) {
 }
 
 my %flows;
-my %points;
 
 # 0 index of the following variables represents the total value of all flows
 my (%first_ts, %last_ts);
@@ -99,8 +98,6 @@ while (<>) {
       if (not defined $$ref or (defined $$ref and $delay < $$ref)) {
         $$ref = $delay;
       }
-
-      $points{$id} .= ($timestamp - $delay) / 1000.0 . " $delay\n";
     }
   }
 
@@ -173,7 +170,7 @@ open GNUPLOT, q{| gnuplot} or die;
 
 print GNUPLOT <<END;
 set xlabel "time (s)"
-set ylabel "delay (ms)"
+set ylabel "signal delay (ms)"
 set key center outside top horizontal
 set output "/dev/stdout"
 END
@@ -204,25 +201,6 @@ for my $id (@flow_ids) {
   $col += 1;
   $color = ($color + 1) % scalar @colors;
 }
-
-shift @flow_ids;
-
-for my $id (@flow_ids) {
-  printf GNUPLOT qq{, "-" using 1:2 with points lt 7 ps 0.15 lc rgb "%s" } .
-         qq{title "Flow %d per-packet delay (95th percentile %0.f ms)"},
-         $colors[$color], $id, $p95{$id};
-
-  $color = ($color + 1) % scalar @colors;
-}
-
 print GNUPLOT "\n";
-
-for my $id (@flow_ids) {
-  print GNUPLOT $points{$id};
-
-  if ($id != $flow_ids[-1]) {
-    print GNUPLOT "e\n";
-  }
-}
 
 close GNUPLOT or die qq{$!};
