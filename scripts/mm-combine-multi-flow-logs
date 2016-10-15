@@ -16,8 +16,9 @@ def push_to_heap(heap, index, log_file, init_ts_delta_i):
     # if log_file is mm-link-log
     if index == -1:
         # find the next delivery opportunity
-        for line in log_file:
-            if '#' in line:
+        while True:
+            line = log_file.readline()
+            if '#' in line or not line:
                 break
     else:
         # find the next arrival or departure event
