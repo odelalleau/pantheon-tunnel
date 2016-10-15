@@ -15,26 +15,33 @@ def main():
 
     recv_log = open(sys.argv[1])
     send_log = open(sys.argv[2])
-    send_pkts = {}
 
     # retrieve initial timestamp of sender from the first line
     line = send_log.readline()
     send_init_ts = int(line.rsplit(':', 1)[-1])
-    print '# init timestamp: %s' % send_init_ts
-    print '# base timestamp: 0'
-
-    # construct a hash table using uid as keys
-    for line in send_log:
-        (send_ts, send_uid, send_size) = map(int, line.split('-'))
-        send_pkts[send_uid] = (send_ts, send_size)
-
-    send_log.seek(0)
-    send_log.readline()
+    min_init_ts = send_init_ts
 
     # retrieve initial timestamp of receiver from the first line
     line = recv_log.readline()
     recv_init_ts = int(line.rsplit(':', 1)[-1])
-    init_ts_delta = recv_init_ts - send_init_ts
+    if recv_init_ts < min_init_ts:
+        min_init_ts = recv_init_ts
+
+    # timestamp calibration to ensure non-negative timestamps
+    send_cal = send_init_ts - min_init_ts
+    recv_cal = recv_init_ts - min_init_ts
+
+    print '# init timestamp: %s' % min_init_ts
+    print '# base timestamp: 0'
+
+    # construct a hash table using uid as keys
+    send_pkts = {}
+    for line in send_log:
+        (send_ts, send_uid, send_size) = map(int, line.split('-'))
+        send_pkts[send_uid] = (send_ts + send_cal, send_size)
+
+    send_log.seek(0)
+    send_log.readline()
 
     # merge two sorted logs into one
     send_l = send_log.readline()
@@ -43,16 +50,16 @@ def main():
     recv_l = recv_log.readline()
     if recv_l:
         (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
-        # packet's received time in sender's clock
-        recv_ts_send = recv_ts + init_ts_delta
 
     while send_l or recv_l:
-        if (send_l and recv_l and send_ts <= recv_ts_send) or not recv_l:
-            print '%s + %s' % (send_ts, send_size)
+        send_ts_cal = send_ts + send_cal
+        recv_ts_cal = recv_ts + recv_cal
+        if (send_l and recv_l and send_ts_cal <= recv_ts_cal) or not recv_l:
+            print '%s + %s' % (send_ts_cal, send_size)
             send_l = send_log.readline()
             if send_l:
                 (send_ts, send_uid, send_size) = map(int, send_l.split('-'))
-        elif (send_l and recv_l and send_ts > recv_ts_send) or not send_l:
+        elif (send_l and recv_l and send_ts_cal > recv_ts_cal) or not send_l:
             if recv_uid in send_pkts:
                 (paired_send_ts, paired_send_size) = send_pkts[recv_uid]
                 # inconsistent packet size
@@ -67,13 +74,11 @@ def main():
                                  'uid %s\n' % recv_uid)
                 sys.exit(1)
 
-            delay = recv_ts_send - paired_send_ts
-            print '%s - %s %s' % (recv_ts_send, recv_size, delay)
+            delay = recv_ts_cal - paired_send_ts
+            print '%s - %s %s' % (recv_ts_cal, recv_size, delay)
             recv_l = recv_log.readline()
             if recv_l:
                 (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
-                # packet's received time in sender's clock
-                recv_ts_send = recv_ts + init_ts_delta
 
     recv_log.close()
     send_log.close()
