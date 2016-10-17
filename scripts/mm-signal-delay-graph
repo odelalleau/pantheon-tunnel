@@ -72,14 +72,6 @@ while (<>) {
       die q{Departure format: timestamp - num_bytes delay [flow_id]};
     }
 
-    if ($delay < 0) {
-      die qq{Invalid delay: $delay};
-    }
-
-    if ($timestamp - $delay < 0) {
-      die qq{Invalid timestamp and delay: ts=$timestamp, delay=$delay};
-    }
-
     if (scalar @line == 5) {
       $flow_id = $line[4];
       if ($flow_id !~ m{^\d+$} or $flow_id <= 0) {
