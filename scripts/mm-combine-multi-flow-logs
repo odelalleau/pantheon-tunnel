@@ -6,7 +6,7 @@ import heapq
 
 def usage():
     print 'Usage:'
-    print sys.argv[0] + ' [--link-log=filename tunnel_log[ tunnel_log2 ...]'
+    print sys.argv[0] + ' [--link-log=filename] tunnel_log[ tunnel_log2 ...]'
     sys.exit(1)
 
 
