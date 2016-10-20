@@ -141,7 +141,7 @@ for my $id (@flow_ids) {
 }
 
 # prepare data file
-my $filename = "/tmp/mm-signal-delay-graph-data-file";
+my $filename = "/tmp/mm-tunnel-delay-data";
 open my $data_file, '>', $filename or die "Could not open file '$filename' $!";
 
 for (my $ts = $first_ts{0}; $ts <= $last_ts{0}; $ts++) {
