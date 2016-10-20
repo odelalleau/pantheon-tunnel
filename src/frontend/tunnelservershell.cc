@@ -84,8 +84,6 @@ int main( int argc, char *argv[] )
         listening_socket.bind( Address() );
         cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " ";
         cout << client_private_address.ip() << " " << local_private_address.ip();
-        cout << " --ingress-log=/tmp/tunnelclient.ingress.log";
-        cout << " --egress-log=/tmp/tunnelclient.egress.log";
         cout << endl;
 
         TunnelShell tunnelserver( ingress_logfile, egress_logfile );
