@@ -207,7 +207,7 @@ for my $id (@flow_ids) {
 }
 
 # prepare data file
-my $filename = "/tmp/mm-throughput-graph-data-file";
+my $filename = "/tmp/mm-tunnel-throughput-data";
 open my $data_file, '>', $filename or die "Could not open file '$filename' $!";
 
 my $US_PER_BIN = $MS_PER_BIN * 1000.0;
@@ -244,12 +244,12 @@ END
 print GNUPLOT qq{set terminal svg size 1024,560 fixed fname 'Arial' fsize 12} .
               qq{ rounded solid mouse standalone name "Throughput"\n};
 
-printf GNUPLOT qq{plot [%f:%f] "$filename" },
+printf GNUPLOT qq{plot [%f:%f] "$filename"},
        $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
 
 my $col = 2;
 if (defined $avg_capacity) {
-  printf GNUPLOT qq{using 1:$col title} .
+  printf GNUPLOT qq{ using 1:$col title } .
          qq{"Capacity (mean %.2f Mbits/s)" with filledcurves above x1 lw 0.5},
          $avg_capacity;
   $col += 1;
@@ -263,12 +263,12 @@ my @colors = ("#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF",
 for my $id (@flow_ids) {
   my $flow_str = $id > 0 ? "Flow $id" : "Total";
   my $lw = $id > 0 ? 2 : 4;
-  my $quotes = defined $avg_capacity ? qq{, ""} : "";
+  my $quotes = (not defined $avg_capacity and $id == 0) ? "" : qq{, ""};
 
   printf GNUPLOT qq{%s using 1:%d with lines lc rgb "%s" lw %d } .
-         qq{title "%s traffic ingress (mean %.2f Mbits/s)"} .
+         qq{title "%s tunnel ingress (mean %.2f Mbits/s)"} .
          qq{, "" using 1:%d with lines lc rgb "%s" lw %d } .
-         qq{title "%s traffic egress (mean %.2f Mbits/s)"},
+         qq{title "%s tunnel egress (mean %.2f Mbits/s)"},
          $quotes, $col, $colors[$color], $lw + 1, $flow_str, $avg_ingress{$id},
          $col + 1, $colors[$color + 1], $lw, $flow_str, $avg_throughput{$id};
 
