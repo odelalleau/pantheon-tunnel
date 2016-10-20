@@ -44,7 +44,7 @@ def single_mode(args):
     recv_log = open(args.ingress_log)
     send_log = open(args.egress_log)
     if args.output_log:
-        output_log = open(args.output_log)
+        output_log = open(args.output_log, 'w')
     else:
         output_log = sys.stdout
 
@@ -155,7 +155,7 @@ def multiple_mode(args):
         tun_logs.append(open(tun_log_name))
 
     if args.output_log:
-        output_log = open(args.output_log)
+        output_log = open(args.output_log, 'w')
     else:
         output_log = sys.stdout
 
