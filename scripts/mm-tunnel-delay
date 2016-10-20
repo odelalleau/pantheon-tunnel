@@ -1,0 +1,198 @@
+#!/usr/bin/env perl
+
+use warnings;
+use strict;
+
+sub usage {
+  die qq{Usage: $0 [filename]\n};
+}
+
+if (scalar @ARGV > 1) {
+  usage;
+}
+
+sub default {
+  return defined $_[0] ? $_[0] : 0;
+}
+
+my $base_timestamp = undef;
+
+while (<>) {
+  chomp;
+
+  if (m{^# base timestamp: (\d+)}) {
+    if (defined $base_timestamp) {
+      die "base timestamp multiply defined";
+    } else {
+      $base_timestamp = $1;
+    }
+    last;
+  }
+}
+
+if (not defined $base_timestamp) {
+  die "logfile is missing base timestamp";
+}
+
+my %flows;
+
+# 0 index of the following variables represents the total value of all flows
+my (%first_ts, %last_ts);
+my (%delays, %signal_delay);
+
+while (<>) {
+  # parse and validate line
+  my @line = split;
+  my ($timestamp, $event_type, $num_bytes) = @line[0..2];
+
+  if (not defined $num_bytes) {
+    die q{Format: timestamp event_type num_bytes [delay] [flow_id]};
+  }
+
+  if ($timestamp !~ m{^\d+$}) {
+    die qq{Invalid timestamp: $timestamp};
+  }
+
+  if ($num_bytes !~ m{^\d+$}) {
+    die qq{Invalid byte count: $num_bytes};
+  }
+
+  $timestamp -= $base_timestamp; # correct for startup time variation
+
+  my $num_bits = $num_bytes * 8;
+  my $flow_id = 0;
+
+  # process the event
+  my @flow_tuple = (0);
+
+  if ($event_type eq q{-}) {
+    my $delay = $line[3];
+
+    if (not defined $delay) {
+      die q{Departure format: timestamp - num_bytes delay [flow_id]};
+    }
+
+    if (scalar @line == 5) {
+      $flow_id = $line[4];
+      if ($flow_id !~ m{^\d+$} or $flow_id <= 0) {
+        die qq{Invalid flow ID: $flow_id};
+      }
+      $flows{$flow_id} = 1;
+      push @flow_tuple, $flow_id;
+    } elsif (keys %flows) {
+      die q{Invalid format: Some events end with flow IDs while some not};
+    }
+
+    for my $id (@flow_tuple) {
+      push @{$delays{$id}}, $delay;
+
+      my $ref = \$signal_delay{$id}{$timestamp - $delay};
+      if (not defined $$ref or (defined $$ref and $delay < $$ref)) {
+        $$ref = $delay;
+      }
+    }
+  }
+
+  for my $id (@flow_tuple) {
+    if (not defined $first_ts{$id} or $timestamp < $first_ts{$id}) {
+      $first_ts{$id} = $timestamp;
+    }
+    if (not defined $last_ts{$id} or $timestamp > $last_ts{$id}) {
+      $last_ts{$id} = $timestamp;
+    }
+  }
+}
+
+if (scalar @{$delays{0}} == 0) {
+  die q{Must have at least one departure event};
+}
+
+$flows{0} = 1;
+my @flow_ids = sort {$a <=> $b} keys %flows;
+my (%p95, %p95s);
+
+# calculate statistics
+for my $id (@flow_ids) {
+  @{$delays{$id}} = sort {$a <=> $b} @{$delays{$id}};
+  $p95{$id} = $delays{$id}[0.95 * scalar @{$delays{$id}}];
+
+  # measure signal delay every millisecond
+  # = minimum time for a message created at time t to get to receiver
+  my @sent_time = sort {$a <=> $b} keys %{$signal_delay{$id}};
+
+  for (my $ts = $sent_time[-1]; $ts >= $sent_time[0]; $ts--) {
+    if (not defined $signal_delay{$id}{$ts}) {
+      $signal_delay{$id}{$ts} = $signal_delay{$id}{$ts + 1} + 1;
+    }
+  }
+
+  my @signal_delays = sort {$a <=> $b} values %{$signal_delay{$id}};
+  $p95s{$id} = $signal_delays[0.95 * scalar @signal_delays];
+
+  if ($id == 0) {
+    printf STDERR qq{-- Total:\n};
+  } else {
+    printf STDERR qq{-- Flow $id:\n};
+  }
+
+  printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n},
+         $p95{$id};
+  printf STDERR qq{95th percentile signal delay: %.0f ms\n}, $p95s{$id};
+}
+
+# prepare data file
+my $filename = "/tmp/mm-tunnel-delay-data";
+open my $data_file, '>', $filename or die "Could not open file '$filename' $!";
+
+for (my $ts = $first_ts{0}; $ts <= $last_ts{0}; $ts++) {
+  my $t = $ts / 1000.0;
+  print $data_file qq{$t};
+
+  for my $id (@flow_ids) {
+    my $delay = default $signal_delay{$id}{$ts};
+    print $data_file qq{ $delay};
+  }
+  print $data_file qq{\n};
+}
+
+close $data_file;
+
+# make graph
+open GNUPLOT, q{| gnuplot} or die;
+
+print GNUPLOT <<END;
+set xlabel "time (s)"
+set ylabel "signal delay (ms)"
+set key center outside top horizontal
+set output "/dev/stdout"
+END
+
+print GNUPLOT qq{set terminal svg size 1024,560 fixed enhanced fname 'Arial'} .
+              qq{ fsize 12 solid mouse standalone name "Delay"\n};
+
+printf GNUPLOT qq{plot [%f:%f] "$filename" },
+       $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
+
+my $color = 0;
+my @colors = ("#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF",
+              "#FF00FF", "#C0C0C0", "#808080", "#800000", "#808000",
+              "#008000", "#800080", "#008080", "#000080");
+
+my $col = 2;
+for my $id (@flow_ids) {
+  my $flow_str = $id > 0 ? "Flow $id" : "Total";
+  my $lw = $id > 0 ? 2 : 4;
+
+  if ($id > 0) {
+    print GNUPLOT qq{, "" };
+  }
+  printf GNUPLOT qq{using 1:%d with lines lc rgb "%s" lw %d } .
+         qq{title "%s signal delay (95th percentile %.0f ms)"},
+         $col, $colors[$color], $lw, $flow_str, $p95s{$id};
+
+  $col += 1;
+  $color = ($color + 1) % scalar @colors;
+}
+print GNUPLOT "\n";
+
+close GNUPLOT or die qq{$!};
