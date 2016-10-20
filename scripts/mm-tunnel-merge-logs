@@ -106,7 +106,7 @@ def single_mode(args):
     send_log.close()
 
 
-def push_to_heap(heap, index, log_file, init_ts_delta_i):
+def push_to_heap(heap, index, log_file, init_ts_delta):
     line = None
 
     # if log_file is mm-link-log
@@ -118,16 +118,16 @@ def push_to_heap(heap, index, log_file, init_ts_delta_i):
                 break
     else:
         # find the next arrival or departure event
-        line = log_file.readline()
+        line = log_file.readline().strip()
 
     if line:
-        line_list = line.split(' ')
-        ts = int(line_list[0]) + init_ts_delta_i
-        line_list[0] = str(ts)
+        line_list = line.split()
+        calibrated_ts = int(line_list[0]) + init_ts_delta
+        line_list[0] = str(calibrated_ts)
         if line_list[1] == '#':
-            line_list[2] = '%s\n' % (int(line_list[2]) - 4)
+            line_list[2] = str(int(line_list[2]) - 4)
         line = ' '.join(line_list)
-        heapq.heappush(heap, (ts, index, line))
+        heapq.heappush(heap, (calibrated_ts, index, line))
 
     return line
 
@@ -150,12 +150,12 @@ def multiple_mode(args):
             line = link_log.readline()
             if line.startswith('# init timestamp'):
                 link_init_ts = int(line.split(':')[1])
-                smallest_init_ts = link_init_ts
+                min_init_ts = link_init_ts
                 line = link_log.readline()
                 base_ts = int(line.split(':')[1])
                 break
     else:
-        smallest_init_ts = sys.maxint
+        min_init_ts = sys.maxint
         base_ts = 0
 
     # find the smallest initial timestamp
@@ -164,18 +164,18 @@ def multiple_mode(args):
         line = tun_log.readline()
         init_ts = int(line.split(':')[1])
         init_ts_delta.append(init_ts)
-        if init_ts < smallest_init_ts:
-            smallest_init_ts = init_ts
+        if init_ts < min_init_ts:
+            min_init_ts = init_ts
         tun_log.readline()
 
     if link_log:
-        link_init_ts_delta = link_init_ts - smallest_init_ts
+        link_init_ts_delta = link_init_ts - min_init_ts
         base_ts += link_init_ts_delta
 
     for i in xrange(len(init_ts_delta)):
-        init_ts_delta[i] -= smallest_init_ts
+        init_ts_delta[i] -= min_init_ts
 
-    print '# init timestamp: %s' % smallest_init_ts
+    print '# init timestamp: %s' % min_init_ts
     print '# base timestamp: %s' % base_ts
 
     # build the min heap
@@ -196,16 +196,11 @@ def multiple_mode(args):
     while heap:
         (ts, index, line) = heapq.heappop(heap)
 
-        # treat each departure event as an delivery opportunity if no link log
-        if not link_log and '-' in line:
-            delivery_line = '%s # 1500\n' % line.split(' ', 1)[0]
-            sys.stdout.write(delivery_line)
-
         # append flow ids to arrival and departure events
         if index != -1:
-            line = line.strip() + ' ' + str(index + 1) + '\n'
+            line += ' %s' % (index + 1)
 
-        sys.stdout.write(line)
+        print line
 
         if index == -1:
             push_to_heap(heap, index, link_log, link_init_ts_delta)
