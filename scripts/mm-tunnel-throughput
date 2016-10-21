@@ -2,6 +2,7 @@
 
 use warnings;
 use strict;
+use List::Util qw[min max];
 
 sub usage {
   die qq{Usage: $0 MS_PER_BIN [filename]\n};
@@ -79,14 +80,13 @@ while (<>) {
   my $num_bits = $num_bytes * 8;
   my $bin = ms_to_bin($timestamp);
   my $flow_id = 0;
+  my @flow_tuple = (0);
 
   # process the event
   if ($event_type eq q{#}) {
     $capacity{$bin} += $num_bits;
     $capacity_sum += $num_bits;
   } else {
-    my @flow_tuple = (0);
-
     if ($event_type eq q{+}) {
       if (scalar @line == 4) {
         $flow_id = $line[3];
@@ -134,24 +134,36 @@ while (<>) {
     } else {
       die qq{Unknown event type: $event_type};
     }
+  }
 
-    for my $id (@flow_tuple) {
-      if (not defined $first_ts{$id} or $timestamp < $first_ts{$id}) {
-        $first_ts{$id} = $timestamp;
-      }
-      if (not defined $last_ts{$id} or $timestamp > $last_ts{$id}) {
-        $last_ts{$id} = $timestamp;
-      }
+  for my $id (@flow_tuple) {
+    if (not defined $first_ts{$id}{$event_type}
+        or $timestamp < $first_ts{$id}{$event_type}) {
+      $first_ts{$id}{$event_type} = $timestamp;
+    }
+    if (not defined $last_ts{$id}{$event_type}
+        or $timestamp > $last_ts{$id}{$event_type}) {
+      $last_ts{$id}{$event_type} = $timestamp;
     }
   }
 }
 
-if (not defined $first_ts{0}) {
+if (not defined $first_ts{0}{'+'} or not defined $first_ts{0}{'-'}) {
   die q{Must have at least one event};
 }
 
-my $first_bin = ms_to_bin($first_ts{0});
-my $last_bin = ms_to_bin($last_ts{0});
+my $total_first_ts = min($first_ts{0}{'+'}, $first_ts{0}{'-'});
+if (defined $first_ts{0}{'#'} and $first_ts{0}{'#'} < $total_first_ts) {
+  $total_first_ts = $first_ts{0}{'#'};
+}
+
+my $total_last_ts = max($last_ts{0}{'+'}, $last_ts{0}{'-'});
+if (defined $last_ts{0}{'#'} and $last_ts{0}{'#'} > $total_last_ts) {
+  $total_last_ts = $last_ts{0}{'#'};
+}
+
+my $first_bin = ms_to_bin($total_first_ts);
+my $last_bin = ms_to_bin($total_last_ts);
 if ($first_bin == $last_bin) {
   die q{MS_PER_BIN is too large for length of trace};
 }
@@ -163,9 +175,11 @@ my (%duration, %avg_ingress, %avg_throughput, $avg_capacity);
 
 # calculate statistics
 for my $id (@flow_ids) {
-  $duration{$id} = ($last_ts{$id} - $first_ts{$id}) / 1000.0;
-  $avg_ingress{$id} = ($arrival_sum{$id} / $duration{$id}) / 1000000.0;
-  $avg_throughput{$id} = ($departure_sum{$id} / $duration{$id}) / 1000000.0;
+  $duration{'+'} = ($last_ts{$id}{'+'} - $first_ts{$id}{'+'}) / 1000.0;
+  $duration{'-'} = ($last_ts{$id}{'-'} - $first_ts{$id}{'-'}) / 1000.0;
+
+  $avg_ingress{$id} = ($arrival_sum{$id} / $duration{'+'}) / 1000000.0;
+  $avg_throughput{$id} = ($departure_sum{$id} / $duration{'-'}) / 1000000.0;
 
   @{$delays{$id}} = sort {$a <=> $b} @{$delays{$id}};
   my $p95 = $delays{$id}[0.95 * scalar @{$delays{$id}}];
@@ -186,7 +200,8 @@ for my $id (@flow_ids) {
   if ($id == 0) {
     printf STDERR qq{-- Total:\n};
     if (defined $capacity_sum) {
-      $avg_capacity = ($capacity_sum / $duration{$id}) / 1000000.0;
+      $duration{'#'} = ($last_ts{$id}{'#'} - $first_ts{$id}{'#'}) / 1000.0;
+      $avg_capacity = ($capacity_sum / $duration{'#'}) / 1000000.0;
       printf STDERR qq{Average capacity: %.2f Mbits/s\n}, $avg_capacity;
     }
     printf STDERR qq{Average throughput: %.2f Mbits/s}, $avg_throughput{$id};
@@ -198,7 +213,8 @@ for my $id (@flow_ids) {
   } else {
     printf STDERR qq{-- Flow $id:\n};
     printf STDERR qq{Active duration: %.2f s - %.2f s\n},
-           $first_ts{$id} / 1000.0, $last_ts{$id} / 1000.0;
+           min($first_ts{$id}{'-'}, $first_ts{$id}{'+'}) / 1000.0,
+           max($last_ts{$id}{'-'}, $last_ts{$id}{'+'}) / 1000.0;
     printf STDERR qq{Average throughput: %.2f Mbits/s\n}, $avg_throughput{$id};
   }
 
@@ -245,7 +261,7 @@ print GNUPLOT qq{set terminal svg size 1024,560 fixed fname 'Arial' fsize 12} .
               qq{ rounded solid mouse standalone name "Throughput"\n};
 
 printf GNUPLOT qq{plot [%f:%f] "$filename"},
-       $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
+       $total_first_ts / 1000.0, $total_last_ts / 1000.0;
 
 my $col = 2;
 if (defined $avg_capacity) {
