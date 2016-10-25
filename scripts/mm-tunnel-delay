@@ -38,7 +38,7 @@ my %flows;
 
 # 0 index of the following variables represents the total value of all flows
 my (%first_ts, %last_ts);
-my (%delays, %signal_delay);
+my %data;
 
 while (<>) {
   # parse and validate line
@@ -84,12 +84,10 @@ while (<>) {
     }
 
     for my $id (@flow_tuple) {
-      push @{$delays{$id}}, $delay;
-
-      my $ref = \$signal_delay{$id}{$timestamp - $delay};
-      if (not defined $$ref or (defined $$ref and $delay < $$ref)) {
-        $$ref = $delay;
-      }
+      my %row;
+      $row{ts} = $timestamp / 1000;
+      $row{delay} = $delay;
+      push @{$data{$id}}, \%row;
     }
   }
 
@@ -103,31 +101,19 @@ while (<>) {
   }
 }
 
-if (scalar @{$delays{0}} == 0) {
+if (scalar @{$data{0}} == 0) {
   die q{Must have at least one departure event};
 }
 
 $flows{0} = 1;
 my @flow_ids = sort {$a <=> $b} keys %flows;
-my (%p95, %p95s);
+my %p95;
 
+my %sorted_data;
 # calculate statistics
 for my $id (@flow_ids) {
-  @{$delays{$id}} = sort {$a <=> $b} @{$delays{$id}};
-  $p95{$id} = $delays{$id}[0.95 * scalar @{$delays{$id}}];
-
-  # measure signal delay every millisecond
-  # = minimum time for a message created at time t to get to receiver
-  my @sent_time = sort {$a <=> $b} keys %{$signal_delay{$id}};
-
-  for (my $ts = $sent_time[-1]; $ts >= $sent_time[0]; $ts--) {
-    if (not defined $signal_delay{$id}{$ts}) {
-      $signal_delay{$id}{$ts} = $signal_delay{$id}{$ts + 1} + 1;
-    }
-  }
-
-  my @signal_delays = sort {$a <=> $b} values %{$signal_delay{$id}};
-  $p95s{$id} = $signal_delays[0.95 * scalar @signal_delays];
+  @{$sorted_data{$id}} = sort {$a->{delay} <=> $b->{delay}} @{$data{$id}};
+  $p95{$id} = $sorted_data{$id}[0.95 * scalar @{$sorted_data{$id}}];
 
   if ($id == 0) {
     printf STDERR qq{-- Total:\n};
@@ -135,34 +121,17 @@ for my $id (@flow_ids) {
     printf STDERR qq{-- Flow $id:\n};
   }
 
-  printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n},
-         $p95{$id};
-  printf STDERR qq{95th percentile signal delay: %.0f ms\n}, $p95s{$id};
+  printf STDERR qq{95th percentile per-packet one-way delay: %.0f ms\n},
+         $p95{$id}{delay};
 }
-
-# prepare data file
-my $filename = "/tmp/mm-tunnel-delay-data";
-open my $data_file, '>', $filename or die "Could not open file '$filename' $!";
-
-for (my $ts = $first_ts{0}; $ts <= $last_ts{0}; $ts++) {
-  my $t = $ts / 1000.0;
-  print $data_file qq{$t};
-
-  for my $id (@flow_ids) {
-    my $delay = default $signal_delay{$id}{$ts};
-    print $data_file qq{ $delay};
-  }
-  print $data_file qq{\n};
-}
-
-close $data_file;
 
 # make graph
 open GNUPLOT, q{| gnuplot} or die;
 
 print GNUPLOT <<END;
 set xlabel "time (s)"
-set ylabel "signal delay (ms)"
+set ylabel "delay (ms)"
+set logscale y
 set key center outside top horizontal
 set output "/dev/stdout"
 END
@@ -170,29 +139,51 @@ END
 print GNUPLOT qq{set terminal svg size 1024,560 fixed enhanced fname 'Arial'} .
               qq{ fsize 12 solid mouse standalone name "Delay"\n};
 
-printf GNUPLOT qq{plot [%f:%f] "$filename" },
-       $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
+printf GNUPLOT qq{plot [%f:%f] }, $first_ts{0} / 1000.0, $last_ts{0} / 1000.0;
 
 my $color = 0;
 my @colors = ("#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#00FFFF",
               "#FF00FF", "#C0C0C0", "#808080", "#800000", "#808000",
               "#008000", "#800080", "#008080", "#000080");
 
-my $col = 2;
+my $first_flow = 1;
 for my $id (@flow_ids) {
-  my $flow_str = $id > 0 ? "Flow $id" : "Total";
-  my $lw = $id > 0 ? 2 : 4;
-
-  if ($id > 0) {
-    print GNUPLOT qq{, "" };
+  my $flow_str = "Flow $id per-packet";
+  if (scalar @flow_ids == 1) {
+    $flow_str = "Per-packet";
+  } elsif ($id == 0) {
+    next;
   }
-  printf GNUPLOT qq{using 1:%d with lines lc rgb "%s" lw %d } .
-         qq{title "%s signal delay (95th percentile %.0f ms)"},
-         $col, $colors[$color], $lw, $flow_str, $p95s{$id};
 
-  $col += 1;
+  if ($first_flow) {
+    $first_flow = 0;
+  } else {
+    print GNUPLOT qq{, };
+  }
+
+  printf GNUPLOT qq{"-" using 1:2 title "$flow_str one-way delay } .
+         qq{(95th percentile %.0f ms)" with points lt 7 ps 0.2 lc rgb "%s"},
+         $p95{$id}{delay}, $colors[$color];
+
   $color = ($color + 1) % scalar @colors;
 }
 print GNUPLOT "\n";
+
+$first_flow = 1;
+for my $id (@flow_ids) {
+  if (scalar @flow_ids > 1 and $id == 0) {
+    next;
+  }
+
+  if ($first_flow) {
+    $first_flow = 0;
+  } else {
+    print GNUPLOT "e\n";
+  }
+
+  for my $row (@{$data{$id}}) {
+    print GNUPLOT qq{$row->{ts} $row->{delay}\n};
+  }
+}
 
 close GNUPLOT or die qq{$!};
