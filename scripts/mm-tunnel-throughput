@@ -56,7 +56,7 @@ my (%capacity, $capacity_sum);
 my (%arrivals, %departures);
 my (%arrival_sum, %departure_sum);
 my (%first_ts, %last_ts);
-my (%delays, %signal_delay);
+my %delays;
 
 while (<>) {
   # parse and validate line
@@ -125,11 +125,6 @@ while (<>) {
         $departures{$id}{$bin} += $num_bits;
         $departure_sum{$id} += $num_bits;
         push @{$delays{$id}}, $delay;
-
-        my $ref = \$signal_delay{$id}{$timestamp - $delay};
-        if (not defined $$ref or (defined $$ref and $delay < $$ref)) {
-          $$ref = $delay;
-        }
       }
     } else {
       die qq{Unknown event type: $event_type};
@@ -184,19 +179,6 @@ for my $id (@flow_ids) {
   @{$delays{$id}} = sort {$a <=> $b} @{$delays{$id}};
   my $p95 = $delays{$id}[0.95 * scalar @{$delays{$id}}];
 
-  # measure signal delay every millisecond
-  # = minimum time for a message created at time t to get to receiver
-  my @sent_time = sort {$a <=> $b} keys %{$signal_delay{$id}};
-
-  for (my $ts = $sent_time[-1]; $ts >= $sent_time[0]; $ts--) {
-    if (not defined $signal_delay{$id}{$ts}) {
-      $signal_delay{$id}{$ts} = $signal_delay{$id}{$ts + 1} + 1;
-    }
-  }
-
-  my @signal_delays = sort {$a <=> $b} values %{$signal_delay{$id}};
-  my $p95s = $signal_delays[0.95 * scalar @signal_delays];
-
   if ($id == 0) {
     printf STDERR qq{-- Total:\n};
     if (defined $capacity_sum) {
@@ -219,7 +201,6 @@ for my $id (@flow_ids) {
   }
 
   printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n}, $p95;
-  printf STDERR qq{95th percentile signal delay: %.0f ms\n}, $p95s;
 }
 
 # prepare data file
