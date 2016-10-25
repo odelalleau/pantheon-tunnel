@@ -200,7 +200,7 @@ for my $id (@flow_ids) {
     printf STDERR qq{Average throughput: %.2f Mbits/s\n}, $avg_throughput{$id};
   }
 
-  printf STDERR qq{95th percentile per-packet queueing delay: %.0f ms\n}, $p95;
+  printf STDERR qq{95th percentile per-packet one-way delay: %.0f ms\n}, $p95;
 }
 
 # prepare data file
