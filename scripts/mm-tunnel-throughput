@@ -246,9 +246,8 @@ printf GNUPLOT qq{plot [%f:%f] "$filename"},
 
 my $col = 2;
 if (defined $avg_capacity) {
-  printf GNUPLOT qq{ using 1:$col title } .
-         qq{"Capacity (mean %.2f Mbits/s)" with filledcurves above x1 lw 0.5},
-         $avg_capacity;
+  printf GNUPLOT qq{ using 1:$col title "Capacity (mean %.2f Mbits/s)" with } .
+         qq{filledcurves above x1 lw 0.5}, $avg_capacity;
   $col += 1;
 }
 
