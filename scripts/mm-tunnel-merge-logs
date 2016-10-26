@@ -69,7 +69,9 @@ def single_mode(args):
     # construct a hash table using uid as keys
     send_pkts = {}
     for line in send_log:
-        (send_ts, send_uid, send_size) = map(int, line.split('-'))
+        (send_ts, send_uid, send_size) = line.split('-')
+        send_ts = int(send_ts)
+        send_size = int(send_size)
         send_pkts[send_uid] = (send_ts + send_cal, send_size)
 
     send_log.seek(0)
@@ -78,10 +80,14 @@ def single_mode(args):
     # merge two sorted logs into one
     send_l = send_log.readline()
     if send_l:
-        (send_ts, send_uid, send_size) = map(int, send_l.split('-'))
+        (send_ts, send_uid, send_size) = send_l.split('-')
+        send_ts = int(send_ts)
+        send_size = int(send_size)
     recv_l = recv_log.readline()
     if recv_l:
-        (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
+        (recv_ts, recv_uid, recv_size) = recv_l.split('-')
+        recv_ts = int(recv_ts)
+        recv_size = int(recv_size)
 
     while send_l or recv_l:
         send_ts_cal = send_ts + send_cal
@@ -90,7 +96,9 @@ def single_mode(args):
             output_log.write('%s + %s\n' % (send_ts_cal, send_size))
             send_l = send_log.readline()
             if send_l:
-                (send_ts, send_uid, send_size) = map(int, send_l.split('-'))
+                (send_ts, send_uid, send_size) = send_l.split('-')
+                send_ts = int(send_ts)
+                send_size = int(send_size)
         elif (send_l and recv_l and send_ts_cal > recv_ts_cal) or not send_l:
             if recv_uid in send_pkts:
                 (paired_send_ts, paired_send_size) = send_pkts[recv_uid]
@@ -110,7 +118,9 @@ def single_mode(args):
             output_log.write('%s - %s %s\n' % (recv_ts_cal, recv_size, delay))
             recv_l = recv_log.readline()
             if recv_l:
-                (recv_ts, recv_uid, recv_size) = map(int, recv_l.split('-'))
+                (recv_ts, recv_uid, recv_size) = recv_l.split('-')
+                recv_ts = int(recv_ts)
+                recv_size = int(recv_size)
 
     recv_log.close()
     send_log.close()
