@@ -47,11 +47,15 @@ def single_mode(args):
 
     # retrieve initial timestamp of sender from the first line
     line = send_log.readline()
+    assert line, 'egress log must contain initial timestamp'
+
     send_init_ts = int(line.rsplit(':', 1)[-1])
     min_init_ts = send_init_ts
 
     # retrieve initial timestamp of receiver from the first line
     line = recv_log.readline()
+    assert line, 'ingress log must contain initial timestamp'
+
     recv_init_ts = int(line.rsplit(':', 1)[-1])
     if recv_init_ts < min_init_ts:
         min_init_ts = recv_init_ts
@@ -183,6 +187,8 @@ def multiple_mode(args):
     init_ts_delta = []
     for tun_log in tun_logs:
         line = tun_log.readline()
+        assert line, '%s must contain initial timestamp' % tun_log.name
+
         init_ts = int(line.split(':')[1])
         init_ts_delta.append(init_ts)
         if init_ts < min_init_ts:
