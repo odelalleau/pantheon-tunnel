@@ -84,6 +84,12 @@ int main( int argc, char *argv[] )
         }
 
         UDPSocket server_socket;
+
+        if ( !if_name.empty() ) {
+            /* bind the server socket to a specified interface */
+            server_socket.bind( if_name );
+        }
+
         /* connect the server_socket to the server_address */
         server_socket.connect( server );
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;

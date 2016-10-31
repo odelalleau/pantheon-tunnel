@@ -84,8 +84,14 @@ int main( int argc, char *argv[] )
         tie(local_private_address, client_private_address) = two_unassigned_addresses();
 
         AutoconnectSocket listening_socket;
+
+        if ( !if_name.empty() ) {
+            /* bind the listening socket to a specified interface */
+            listening_socket.bind( if_name );
+        }
         /* bind the listening socket to an available address/port, and print out what was bound */
         listening_socket.bind( Address() );
+
         cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " ";
         cout << client_private_address.ip() << " " << local_private_address.ip();
         cout << endl;
