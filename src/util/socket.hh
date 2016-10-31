@@ -34,6 +34,9 @@ public:
     /* bind socket to a specified local address (usually to listen/accept) */
     void bind( const Address & address );
 
+    /* bind socket to a specified interface */
+    void bind( const std::string & interface );
+
     /* connect socket to a specified peer address */
     void connect( const Address & address );
 

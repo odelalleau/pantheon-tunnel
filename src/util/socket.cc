@@ -67,6 +67,16 @@ void Socket::bind( const Address & address )
                                 address.size() ) );
 }
 
+/* bind socket to a specified interface */
+void Socket::bind( const std::string & interface )
+{
+    SystemCall( "setsockopt", ::setsockopt( fd_num(),
+                                            SOL_SOCKET,
+                                            SO_BINDTODEVICE,
+                                            interface.c_str(),
+                                            interface.size() ) );
+}
+
 /* connect socket to a specified peer address */
 void Socket::connect( const Address & address )
 {
