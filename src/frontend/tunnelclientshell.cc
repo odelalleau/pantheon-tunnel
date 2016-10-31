@@ -13,7 +13,7 @@ void usage_error( const string & program_name )
 {
     cerr << "Usage: " << program_name << " IP PORT LOCAL-PRIVATE-IP SERVER-PRIVATE-IP [OPTION]... [COMMAND]" << endl;
     cerr << endl;
-    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME" << endl;
+    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME --interface=INTERFACE" << endl;
 
     throw runtime_error( "invalid arguments" );
 }
@@ -32,26 +32,30 @@ int main( int argc, char *argv[] )
         }
 
         const option command_line_options[] = {
-            { "ingress-log", required_argument, nullptr, 'i' },
+            { "ingress-log", required_argument, nullptr, 'n' },
             { "egress-log",  required_argument, nullptr, 'e' },
-            { 0,                             0, nullptr, 0 }
+            { "interface",   required_argument, nullptr, 'i' },
+            { 0,                             0, nullptr,  0  }
         };
 
-        string ingress_logfile, egress_logfile;
+        string ingress_logfile, egress_logfile, if_name;
 
         while ( true ) {
-            const int opt = getopt_long( argc, argv, "i:e:",
+            const int opt = getopt_long( argc, argv, "",
                                          command_line_options, nullptr );
             if ( opt == -1 ) { /* end of options */
                 break;
             }
 
             switch ( opt ) {
-            case 'i':
+            case 'n':
                 ingress_logfile = optarg;
                 break;
             case 'e':
                 egress_logfile = optarg;
+                break;
+            case 'i':
+                if_name = optarg;
                 break;
             case '?':
                 usage_error( argv[ 0 ] );
