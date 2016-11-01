@@ -42,12 +42,12 @@ mm_replayserver_LDADD = -lrt ../util/libutil.a ../http/libhttp.a ../protobufs/li
 mm_replayserver_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-tunnelclient
-mm_tunnelclient_SOURCES = tunnelclientshell.cc
+mm_tunnelclient_SOURCES = tunnelshell_common.hh tunnelclientshell.cc
 mm_tunnelclient_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
 mm_tunnelclient_LDFLAGS = -pthread
 
 bin_PROGRAMS += mm-tunnelserver
-mm_tunnelserver_SOURCES = tunnelservershell.cc
+mm_tunnelserver_SOURCES = tunnelshell_common.hh tunnelservershell.cc
 mm_tunnelserver_LDADD = -lrt ../util/libutil.a ../packet/libpacket.a
 mm_tunnelserver_LDFLAGS = -pthread
 

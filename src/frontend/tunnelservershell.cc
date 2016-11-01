@@ -7,6 +7,7 @@
 
 #include "autoconnect_socket.hh"
 #include "tunnelshell.cc"
+#include "tunnelshell_common.hh"
 
 using namespace std;
 
@@ -87,6 +88,7 @@ int main( int argc, char *argv[] )
 
         if ( !if_name.empty() ) {
             /* bind the listening socket to a specified interface */
+            check_interface_for_binding( string( argv[ 0 ] ), if_name );
             listening_socket.bind( if_name );
         }
         /* bind the listening socket to an available address/port, and print out what was bound */

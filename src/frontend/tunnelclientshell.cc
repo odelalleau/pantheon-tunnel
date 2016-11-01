@@ -6,6 +6,7 @@
 #include <getopt.h>
 
 #include "tunnelshell.cc"
+#include "tunnelshell_common.hh"
 
 using namespace std;
 
@@ -87,6 +88,7 @@ int main( int argc, char *argv[] )
 
         if ( !if_name.empty() ) {
             /* bind the server socket to a specified interface */
+            check_interface_for_binding( string( argv[ 0 ] ), if_name );
             server_socket.bind( if_name );
         }
 
