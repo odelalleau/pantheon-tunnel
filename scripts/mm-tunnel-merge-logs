@@ -91,8 +91,11 @@ def single_mode(args):
         recv_size = int(recv_size)
 
     while send_l or recv_l:
-        send_ts_cal = send_ts + send_cal
-        recv_ts_cal = recv_ts + recv_cal
+        if send_l:
+            send_ts_cal = send_ts + send_cal
+        if recv_l:
+            recv_ts_cal = recv_ts + recv_cal
+
         if (send_l and recv_l and send_ts_cal <= recv_ts_cal) or not recv_l:
             output_log.write('%s + %s\n' % (send_ts_cal, send_size))
             send_l = send_log.readline()
