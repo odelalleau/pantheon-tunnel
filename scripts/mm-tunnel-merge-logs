@@ -64,8 +64,6 @@ def single_mode(args):
     send_cal = send_init_ts - min_init_ts
     recv_cal = recv_init_ts - min_init_ts
 
-    output_log.write('# init timestamp: %s\n' % min_init_ts)
-    output_log.write('# base timestamp: 0\n')
 
     # construct a hash table using uid as keys
     send_pkts = {}
@@ -89,6 +87,12 @@ def single_mode(args):
         (recv_ts, recv_uid, recv_size) = recv_l.split('-')
         recv_ts = int(recv_ts)
         recv_size = int(recv_size)
+
+    output_log.write('# init timestamp: %s\n' % min_init_ts)
+    base_ts = send_ts + send_cal
+    if recv_ts + recv_cal < base_ts:
+        base_ts = recv_ts + recv_cal
+    output_log.write('# base timestamp: %s\n' % base_ts)
 
     while send_l or recv_l:
         if send_l:
