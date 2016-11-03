@@ -64,7 +64,6 @@ def single_mode(args):
     send_cal = send_init_ts - min_init_ts
     recv_cal = recv_init_ts - min_init_ts
 
-
     # construct a hash table using uid as keys
     send_pkts = {}
     for line in send_log:
@@ -76,22 +75,28 @@ def single_mode(args):
     send_log.seek(0)
     send_log.readline()
 
+    output_log.write('# init timestamp: %s\n' % min_init_ts)
+    base_ts = sys.maxint
+
     # merge two sorted logs into one
     send_l = send_log.readline()
     if send_l:
         (send_ts, send_uid, send_size) = send_l.split('-')
         send_ts = int(send_ts)
         send_size = int(send_size)
+        if send_ts + send_cal < base_ts:
+            base_ts = send_ts + send_cal
+
     recv_l = recv_log.readline()
     if recv_l:
         (recv_ts, recv_uid, recv_size) = recv_l.split('-')
         recv_ts = int(recv_ts)
         recv_size = int(recv_size)
+        if recv_ts + recv_cal < base_ts:
+            base_ts = recv_ts + recv_cal
 
-    output_log.write('# init timestamp: %s\n' % min_init_ts)
-    base_ts = send_ts + send_cal
-    if recv_ts + recv_cal < base_ts:
-        base_ts = recv_ts + recv_cal
+    if base_ts == sys.maxint:
+        base_ts = 0
     output_log.write('# base timestamp: %s\n' % base_ts)
 
     while send_l or recv_l:
