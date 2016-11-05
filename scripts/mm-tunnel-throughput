@@ -184,9 +184,9 @@ for my $id (@flow_ids) {
     if (defined $capacity_sum) {
       $duration{'#'} = ($last_ts{$id}{'#'} - $first_ts{$id}{'#'}) / 1000.0;
       $avg_capacity = ($capacity_sum / $duration{'#'}) / 1000000.0;
-      printf STDERR qq{Average capacity: %.2f Mbits/s\n}, $avg_capacity;
+      printf STDERR qq{Average capacity: %.2f Mbit/s\n}, $avg_capacity;
     }
-    printf STDERR qq{Average throughput: %.2f Mbits/s}, $avg_throughput{$id};
+    printf STDERR qq{Average throughput: %.2f Mbit/s}, $avg_throughput{$id};
     if (defined $avg_capacity) {
       printf STDERR qq{ (%.1f%% utilization)},
              100.0 * $avg_throughput{$id} / $avg_capacity;
@@ -197,7 +197,7 @@ for my $id (@flow_ids) {
     printf STDERR qq{Active duration: %.2f s - %.2f s\n},
            min($first_ts{$id}{'-'}, $first_ts{$id}{'+'}) / 1000.0,
            max($last_ts{$id}{'-'}, $last_ts{$id}{'+'}) / 1000.0;
-    printf STDERR qq{Average throughput: %.2f Mbits/s\n}, $avg_throughput{$id};
+    printf STDERR qq{Average throughput: %.2f Mbit/s\n}, $avg_throughput{$id};
   }
 
   printf STDERR qq{95th percentile per-packet one-way delay: %.0f ms\n}, $p95;
@@ -232,7 +232,7 @@ open GNUPLOT, q{| gnuplot} or die;
 
 print GNUPLOT <<END;
 set xlabel "time (s)"
-set ylabel "throughput (Mbits/s)"
+set ylabel "throughput (Mbit/s)"
 set key center outside top horizontal
 set style fill solid 0.2 noborder
 set terminal png size 1024,560 font Arial 12 enhanced
@@ -244,7 +244,7 @@ printf GNUPLOT qq{plot [%f:%f] "$filename"},
 
 my $col = 2;
 if (defined $avg_capacity) {
-  printf GNUPLOT qq{ using 1:$col title "Capacity (mean %.2f Mbits/s)" with } .
+  printf GNUPLOT qq{ using 1:$col title "Capacity (mean %.2f Mbit/s)" with } .
          qq{filledcurves above x1 lw 0.5}, $avg_capacity;
   $col += 1;
 }
@@ -260,9 +260,9 @@ for my $id (@flow_ids) {
   my $quotes = (not defined $avg_capacity and $id == 0) ? "" : qq{, ""};
 
   printf GNUPLOT qq{%s using 1:%d with lines lc rgb "%s" lw %d } .
-         qq{title "%s tunnel ingress (mean %.2f Mbits/s)"} .
+         qq{title "%s tunnel ingress (mean %.2f Mbit/s)"} .
          qq{, "" using 1:%d with lines lc rgb "%s" lw %d } .
-         qq{title "%s tunnel egress (mean %.2f Mbits/s)"},
+         qq{title "%s tunnel egress (mean %.2f Mbit/s)"},
          $quotes, $col, $colors[$color], $lw + 1, $flow_str, $avg_ingress{$id},
          $col + 1, $colors[$color + 1], $lw, $flow_str, $avg_throughput{$id};
 
