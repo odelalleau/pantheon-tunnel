@@ -98,9 +98,11 @@ int main( int argc, char *argv[] )
         cout << client_private_address.ip() << " " << local_private_address.ip();
         cout << endl;
 
-        TunnelShell tunnelserver( ingress_logfile, egress_logfile );
-
-        tunnelserver.start_link( user_environment, listening_socket, local_private_address, client_private_address, "[tunnelserver] ", command );
+        TunnelShell tunnelserver;
+        tunnelserver.start_link( user_environment, listening_socket,
+                                 local_private_address, client_private_address,
+                                 ingress_logfile, egress_logfile,
+                                 "[tunnelserver] ", command );
         return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );

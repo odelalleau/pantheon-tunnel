@@ -25,48 +25,26 @@ struct wrapped_packet_header {
     uint64_t uid;
 };
 
-TunnelShell::TunnelShell( const std::string & ingress_logfile,
-                const std::string & egress_logfile )
-    : outside_shell_loop(),
-    ingress_log(),
-    egress_log()
+TunnelShell::TunnelShell( void )
+    : outside_shell_loop()
 {
-    /* open logfiles if called for */
-    if ( not ingress_logfile.empty() ) {
-        ingress_log.reset( new ofstream( ingress_logfile ) );
-        if ( not ingress_log->good() ) {
-            throw runtime_error( ingress_logfile + ": error opening for writing" );
-        }
+    /* make sure environment has been cleared */
+    if ( environ != nullptr ) {
+        throw runtime_error( "TunnelShell: environment was not cleared" );
     }
-    if ( not egress_logfile.empty() ) {
-        egress_log.reset( new ofstream( egress_logfile ) );
-        if ( not egress_log->good() ) {
-            throw runtime_error( egress_logfile + ": error opening for writing" );
-        }
-    }
+
+    /* initialize base timestamp value before any forking */
+    initial_timestamp();
 }
 
 void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_socket,
                   const Address & local_private_address,
                   const Address & peer_private_address,
+                  const std::string & ingress_logfile,
+                  const std::string & egress_logfile,
                   const string & shell_prefix,
                   const vector< string > & command)
 {
-    /* make sure environment has been cleared */
-    if ( environ != nullptr ) {
-        throw runtime_error( shell_prefix + ": environment was not cleared" );
-    }
-
-    /* initialize base timestamp value before any forking */
-    initial_timestamp();
-
-    if ( ingress_log ) {
-        *ingress_log << "# mahimahi " + shell_prefix + " ingress: " << initial_timestamp() << endl;
-    }
-    if ( egress_log ) {
-        *egress_log << "# mahimahi " + shell_prefix + " egress: " << initial_timestamp() << endl;
-    }
-
     /* Fork */
     outside_shell_loop.add_child_process( "packetshell", [&]() { // XXX add special child process?
             TunDevice tun( "tunnel", local_private_address, peer_private_address, false );
@@ -109,6 +87,30 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                 } );
 
 
+            std::unique_ptr<std::ofstream> ingress_log;
+            std::unique_ptr<std::ofstream> egress_log;
+
+            /* open logfiles if called for */
+            if ( not ingress_logfile.empty() ) {
+                ingress_log.reset( new ofstream( ingress_logfile ) );
+                if ( not ingress_log->good() ) {
+                    throw runtime_error( ingress_logfile + ": error opening for writing" );
+                }
+            }
+            if ( not egress_logfile.empty() ) {
+                egress_log.reset( new ofstream( egress_logfile ) );
+                if ( not egress_log->good() ) {
+                    throw runtime_error( egress_logfile + ": error opening for writing" );
+                }
+            }
+
+            if ( ingress_log ) {
+                *ingress_log << "# mahimahi " + shell_prefix + "ingress: " << initial_timestamp() << endl;
+            }
+            if ( egress_log ) {
+                *egress_log << "# mahimahi " + shell_prefix + "egress: " << initial_timestamp() << endl;
+            }
+
             /* tun device gets datagram -> read it -> give to server socket */
             inner_loop.add_simple_input_handler( tun,
                     [&] () {
@@ -119,7 +121,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     string uid_wrapped_packet = string( (char *) &to_send, sizeof(struct wrapped_packet_header) ) + packet;
 
                     if ( egress_log ) {
-                    *egress_log << timestamp() << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *egress_log << timestamp() << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     peer_socket.write( uid_wrapped_packet );
@@ -146,7 +148,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     }
 
                     if ( ingress_log ) {
-                    *ingress_log << timestamp() << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *ingress_log << timestamp() << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     tun.write( contents );

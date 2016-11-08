@@ -99,9 +99,12 @@ int main( int argc, char *argv[] )
         const struct wrapped_packet_header to_send = { (uint64_t) -1 };
         server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
-        TunnelShell tunnelclient( ingress_logfile, egress_logfile );
-        tunnelclient.start_link( user_environment, server_socket, local_private_address, server_private_address,
-                "[tunnelclient " + server.str() + "] ", command );
+        TunnelShell tunnelclient;
+        tunnelclient.start_link( user_environment, server_socket,
+                                 local_private_address, server_private_address,
+                                 ingress_logfile, egress_logfile,
+                                 "[tunnelclient " + server.str() + "] ",
+                                 command );
         return tunnelclient.wait_for_exit();
     } catch ( const exception & e ) {
         print_exception( e );
