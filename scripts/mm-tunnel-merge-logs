@@ -157,10 +157,7 @@ def push_to_heap(heap, index, log_file, init_ts_delta):
 
     if line:
         line_list = line.split()
-        try:
-            calibrated_ts = int(line_list[0]) + init_ts_delta
-        except:
-            calibrated_ts = int(line_list[0].strip('\x00')) + init_ts_delta
+        calibrated_ts = int(line_list[0]) + init_ts_delta
 
         line_list[0] = str(calibrated_ts)
         if line_list[1] == '#':
