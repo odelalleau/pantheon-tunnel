@@ -201,6 +201,9 @@ for my $id (@flow_ids) {
   }
 
   printf STDERR qq{95th percentile per-packet one-way delay: %.0f ms\n}, $p95;
+
+  my $loss_rate = 1 -  $departure_sum{$id} / $arrival_sum{$id};
+  printf STDERR qq{Loss rate: %.2f%%\n}, 100 * $loss_rate;
 }
 
 # prepare data file
