@@ -37,6 +37,11 @@ TunnelShell::TunnelShell( void )
     initial_timestamp();
 }
 
+inline float pretty_microseconds( uint64_t usecs )
+{
+    return float( usecs / 1000 );
+}
+
 void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_socket,
                   const Address & local_private_address,
                   const Address & peer_private_address,
@@ -105,10 +110,10 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
             }
 
             if ( ingress_log ) {
-                *ingress_log << "# mahimahi " + shell_prefix + "ingress: " << initial_timestamp() << endl;
+                *ingress_log << "# mahimahi " + shell_prefix + "ingress: " << pretty_microseconds( initial_timestamp_usecs() ) << endl;
             }
             if ( egress_log ) {
-                *egress_log << "# mahimahi " + shell_prefix + "egress: " << initial_timestamp() << endl;
+                *egress_log << "# mahimahi " + shell_prefix + "egress: " << pretty_microseconds( initial_timestamp_usecs() ) << endl;
             }
 
             /* tun device gets datagram -> read it -> give to server socket */
@@ -121,7 +126,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     string uid_wrapped_packet = string( (char *) &to_send, sizeof(struct wrapped_packet_header) ) + packet;
 
                     if ( egress_log ) {
-                        *egress_log << timestamp() << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *egress_log << pretty_microseconds( timestamp_usecs() ) << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     peer_socket.write( uid_wrapped_packet );
@@ -148,7 +153,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     }
 
                     if ( ingress_log ) {
-                        *ingress_log << timestamp() << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *ingress_log << pretty_microseconds( timestamp_usecs() ) << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     tun.write( contents );
