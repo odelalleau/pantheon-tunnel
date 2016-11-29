@@ -139,7 +139,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     string contents = packet.substr( sizeof(struct wrapped_packet_header) );
                     if ( contents.empty() ) {
                         if ( header_received.uid == (uint64_t) -1 ) {
-                            cerr << "got connection from client" << endl;
+                            cout << "got connection from client" << endl;
                             return ResultType::Continue;
                         } else {
                             cerr << "packet empty besides uid " << header_received.uid << endl;
