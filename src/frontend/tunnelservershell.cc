@@ -6,8 +6,9 @@
 #include <getopt.h>
 
 #include "autoconnect_socket.hh"
-#include "tunnelshell.cc"
+#include "tunnelshell.hh"
 #include "tunnelshell_common.hh"
+#include "interfaces.hh"
 
 using namespace std;
 

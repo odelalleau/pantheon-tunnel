@@ -5,7 +5,8 @@
 #include <iostream>
 #include <getopt.h>
 
-#include "tunnelshell.cc"
+#include "exception.hh"
+#include "tunnelshell.hh"
 #include "tunnelshell_common.hh"
 
 using namespace std;
@@ -96,7 +97,7 @@ int main( int argc, char *argv[] )
         server_socket.connect( server );
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
         // XXX error better if this write fails because server is not accepting connections
-        const struct wrapped_packet_header to_send = { (uint64_t) -1 };
+        const wrapped_packet_header to_send = { (uint64_t) -1 };
         server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
         TunnelShell tunnelclient;

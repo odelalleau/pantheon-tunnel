@@ -38,4 +38,8 @@ class TunnelShell
         TunnelShell & operator=( const TunnelShell & other ) = delete;
 };
 
+struct wrapped_packet_header {
+    uint64_t uid;
+};
+
 #endif /* TUNNELSHELL_HH */

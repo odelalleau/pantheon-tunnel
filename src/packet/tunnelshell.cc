@@ -21,10 +21,6 @@
 using namespace std;
 using namespace PollerShortNames;
 
-struct wrapped_packet_header {
-    uint64_t uid;
-};
-
 TunnelShell::TunnelShell( void )
     : outside_shell_loop()
 {
