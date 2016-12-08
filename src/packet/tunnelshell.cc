@@ -136,6 +136,12 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     if ( contents.empty() ) {
                         if ( header_received.uid == (uint64_t) -1 ) {
                             cout << "got connection from client" << endl;
+
+                            send_n_wrapper_only_datagrams(3, peer_socket, (uint64_t) -2 );
+                            return ResultType::Continue;
+                        } else if ( header_received.uid == (uint64_t) -2 ) {
+                            // Got extra ack from server, ignore
+
                             return ResultType::Continue;
                         } else {
                             cerr << "packet empty besides uid " << header_received.uid << endl;

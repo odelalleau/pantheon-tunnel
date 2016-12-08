@@ -6,10 +6,11 @@
 #include <getopt.h>
 
 #include "exception.hh"
-#include "tunnelshell.hh"
 #include "tunnelshell_common.hh"
+#include "tunnelshell.hh"
 
 using namespace std;
+using namespace PollerShortNames;
 
 void usage_error( const string & program_name )
 {
@@ -97,8 +98,38 @@ int main( int argc, char *argv[] )
         server_socket.connect( server );
         cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
         // XXX error better if this write fails because server is not accepting connections
-        const wrapped_packet_header to_send = { (uint64_t) -1 };
-        server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
+        //const wrapped_packet_header to_send = { (uint64_t) -1 };
+        //server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
+
+        bool got_ack = false;
+        const int retry_loops = 10;
+        int retry_num = 0;
+        while (not got_ack) {
+            send_n_wrapper_only_datagrams( 2, server_socket, (uint64_t) -1 );
+
+            Poller ack_poll;
+            ack_poll.add_action( Poller::Action( server_socket, Direction::In,
+                        [&] () {
+                        const string ack_packet = server_socket.read();
+                        const wrapped_packet_header ack_header = *( (wrapped_packet_header *) ack_packet.data() );
+                        if (ack_packet.length() == sizeof(wrapped_packet_header) && ack_header.uid == (uint64_t) -2) {
+                            got_ack = true;
+                        }
+                        return ResultType::Exit;
+                        } ) );
+            ack_poll.poll( 1000 );
+
+            if (not got_ack) {
+                retry_num++;
+                if (retry_num > retry_loops) {
+                    cerr << "failed to connect to tunnel server, exiting.." << endl;
+                    return EXIT_FAILURE;
+                } else {
+                    cerr << "no response to from server, retrying " << retry_num << "/" << retry_loops << endl;
+                }
+            }
+        }
+        cerr << "connected to server at " << server_socket.peer_address().ip() << endl;
 
         TunnelShell tunnelclient;
         tunnelclient.start_link( user_environment, server_socket,

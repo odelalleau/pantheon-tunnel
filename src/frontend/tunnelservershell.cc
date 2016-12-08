@@ -6,11 +6,12 @@
 #include <getopt.h>
 
 #include "autoconnect_socket.hh"
-#include "tunnelshell.hh"
 #include "tunnelshell_common.hh"
+#include "tunnelshell.hh"
 #include "interfaces.hh"
 
 using namespace std;
+using namespace PollerShortNames;
 
 void usage_error( const string & program_name )
 {
@@ -98,6 +99,23 @@ int main( int argc, char *argv[] )
         cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " ";
         cout << client_private_address.ip() << " " << local_private_address.ip();
         cout << endl;
+
+        Poller client_poll;
+
+        client_poll.add_action( Poller::Action( listening_socket, Direction::In,
+                    [&] () {
+                    const string client_packet = listening_socket.read();
+                    const wrapped_packet_header client_header = *( (wrapped_packet_header *) client_packet.data() );
+                    if (client_packet.length() == sizeof(wrapped_packet_header) && client_header.uid == (uint64_t) -1) {
+                        cerr << "client packet gotten" << endl;
+                        send_n_wrapper_only_datagrams( 2, listening_socket, (uint64_t) -2 );
+                        return ResultType::Exit;
+                    } else {
+                        cerr << "random packet gotten" << endl;
+                        return ResultType::Continue;
+                    }
+                    } ) );
+        client_poll.poll( -1 );
 
         TunnelShell tunnelserver;
         tunnelserver.start_link( user_environment, listening_socket,
