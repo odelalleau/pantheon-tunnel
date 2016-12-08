@@ -7,6 +7,7 @@
 #include <fstream>
 #include <memory>
 
+#include "tunnelshell_common.hh"
 #include "netdevice.hh"
 #include "util.hh"
 #include "address.hh"
@@ -36,10 +37,6 @@ class TunnelShell
 
         TunnelShell( const TunnelShell & other ) = delete;
         TunnelShell & operator=( const TunnelShell & other ) = delete;
-};
-
-struct wrapped_packet_header {
-    uint64_t uid;
 };
 
 #endif /* TUNNELSHELL_HH */
