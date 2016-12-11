@@ -139,6 +139,7 @@ int main( int argc, char *argv[] )
                                  command );
         return tunnelclient.wait_for_exit();
     } catch ( const exception & e ) {
+        cerr << "Tunnelclient got an exception. ";
         print_exception( e );
         return EXIT_FAILURE;
     }
