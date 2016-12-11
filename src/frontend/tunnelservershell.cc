@@ -107,11 +107,11 @@ int main( int argc, char *argv[] )
                     const string client_packet = listening_socket.read();
                     const wrapped_packet_header client_header = *( (wrapped_packet_header *) client_packet.data() );
                     if (client_packet.length() == sizeof(wrapped_packet_header) && client_header.uid == (uint64_t) -1) {
-                        cerr << "client packet gotten" << endl;
+                        cerr << "Tunnelserver received syn packet from tunnelclient." << endl;
                         send_n_wrapper_only_datagrams( 2, listening_socket, (uint64_t) -2 );
                         return ResultType::Exit;
                     } else {
-                        cerr << "random packet gotten" << endl;
+                        cerr << "Tunnelserver received packet with unidentifiable contents." << endl;
                         return ResultType::Continue;
                     }
                     } ) );
