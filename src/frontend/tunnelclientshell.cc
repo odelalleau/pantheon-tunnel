@@ -102,10 +102,10 @@ int main( int argc, char *argv[] )
         //server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
         bool got_ack = false;
-        const int retry_loops = 10;
+        const int retry_loops = 20;
         int retry_num = 0;
         while (not got_ack) {
-            send_n_wrapper_only_datagrams( 2, server_socket, (uint64_t) -1 );
+            send_wrapper_only_datagram( server_socket, (uint64_t) -1 );
 
             Poller ack_poll;
             ack_poll.add_action( Poller::Action( server_socket, Direction::In,
@@ -117,7 +117,7 @@ int main( int argc, char *argv[] )
                         }
                         return ResultType::Exit;
                         } ) );
-            ack_poll.poll( 1000 );
+            ack_poll.poll( 500 );
 
             if (not got_ack) {
                 retry_num++;
@@ -129,7 +129,7 @@ int main( int argc, char *argv[] )
                 }
             }
         }
-        cerr << "Tunnelclient connected to tunnelserver at " << server_socket.peer_address().ip() << endl;
+        cout << "Tunnelclient got connection from tunnelserver at " << server_socket.peer_address().ip() << endl;
 
         TunnelShell tunnelclient;
         tunnelclient.start_link( user_environment, server_socket,
