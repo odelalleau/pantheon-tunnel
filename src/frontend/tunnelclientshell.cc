@@ -96,7 +96,7 @@ int main( int argc, char *argv[] )
 
         /* connect the server_socket to the server_address */
         server_socket.connect( server );
-        cerr << "client listening for server on port " << server_socket.local_address().port() << endl;
+        cerr << "Tunnelclient listening for server on port " << server_socket.local_address().port() << endl;
         // XXX error better if this write fails because server is not accepting connections
         //const wrapped_packet_header to_send = { (uint64_t) -1 };
         //server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
@@ -122,14 +122,14 @@ int main( int argc, char *argv[] )
             if (not got_ack) {
                 retry_num++;
                 if (retry_num > retry_loops) {
-                    cerr << "failed to connect to tunnel server, exiting.." << endl;
+                    cerr << "Failed to connect to tunnel server after " << retry_loops << " tries, exiting.." << endl;
                     return EXIT_FAILURE;
                 } else {
-                    cerr << "no response to from server, retrying " << retry_num << "/" << retry_loops << endl;
+                    cerr << "Tunnelclient received no response to from tunnelserver, retrying " << retry_num << "/" << retry_loops << endl;
                 }
             }
         }
-        cerr << "connected to server at " << server_socket.peer_address().ip() << endl;
+        cerr << "Tunnelclient connected to tunnelserver at " << server_socket.peer_address().ip() << endl;
 
         TunnelShell tunnelclient;
         tunnelclient.start_link( user_environment, server_socket,
