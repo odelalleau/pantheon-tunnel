@@ -107,8 +107,8 @@ int main( int argc, char *argv[] )
                     const string client_packet = listening_socket.read();
                     const wrapped_packet_header client_header = *( (wrapped_packet_header *) client_packet.data() );
                     if (client_packet.length() == sizeof(wrapped_packet_header) && client_header.uid == (uint64_t) -1) {
-                        cerr << "Tunnelserver received syn packet from tunnelclient." << endl;
-                        send_n_wrapper_only_datagrams( 2, listening_socket, (uint64_t) -2 );
+                        cout << "Tunnelserver got connection from tunnelclient." << endl;
+                        send_wrapper_only_datagram( listening_socket, (uint64_t) -2 );
                         return ResultType::Exit;
                     } else {
                         cerr << "Tunnelserver received packet with unidentifiable contents." << endl;

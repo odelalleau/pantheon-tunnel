@@ -25,9 +25,7 @@ void check_interface_for_binding( const std::string &prog_name, const std::strin
     }
 }
 
-void send_n_wrapper_only_datagrams(const uint16_t num_packets, FileDescriptor &connected_socket, const uint64_t uid ) {
+void send_wrapper_only_datagram(FileDescriptor &connected_socket, const uint64_t uid ) {
     const wrapped_packet_header to_send = { uid };
-    for (uint16_t i = 0; i < num_packets; i++) {
-        connected_socket.write( std::string( (char *) &to_send, sizeof(to_send) ) );
-    }
+    connected_socket.write( std::string( (char *) &to_send, sizeof(to_send) ) );
 }
