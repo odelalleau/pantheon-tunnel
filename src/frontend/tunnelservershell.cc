@@ -124,6 +124,7 @@ int main( int argc, char *argv[] )
                                  "[tunnelserver] ", command );
         return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
+        cerr << "Tunnelserver got an exception. ";
         print_exception( e );
         return EXIT_FAILURE;
     }
