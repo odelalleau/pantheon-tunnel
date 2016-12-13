@@ -28,8 +28,8 @@ class TunnelShell
         void start_link( char ** const user_environment, UDPSocket & peer_socket,
                 const Address & local_private_address,
                 const Address & peer_private_address,
-                const std::string & ingress_logfile,
-                const std::string & egress_logfile,
+                std::unique_ptr<std::ofstream> &ingress_logfile,
+                std::unique_ptr<std::ofstream> &egress_logfile,
                 const std::string & shell_prefix,
                 const std::vector< std::string > & command );
 

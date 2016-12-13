@@ -36,8 +36,8 @@ TunnelShell::TunnelShell( void )
 void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_socket,
                   const Address & local_private_address,
                   const Address & peer_private_address,
-                  const std::string & ingress_logfile,
-                  const std::string & egress_logfile,
+                  std::unique_ptr<std::ofstream> &ingress_log,
+                  std::unique_ptr<std::ofstream> &egress_log,
                   const string & shell_prefix,
                   const vector< string > & command)
 {
@@ -81,31 +81,6 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
 
                     return ezexec( command, true );
                 } );
-
-
-            std::unique_ptr<std::ofstream> ingress_log;
-            std::unique_ptr<std::ofstream> egress_log;
-
-            /* open logfiles if called for */
-            if ( not ingress_logfile.empty() ) {
-                ingress_log.reset( new ofstream( ingress_logfile ) );
-                if ( not ingress_log->good() ) {
-                    throw runtime_error( ingress_logfile + ": error opening for writing" );
-                }
-            }
-            if ( not egress_logfile.empty() ) {
-                egress_log.reset( new ofstream( egress_logfile ) );
-                if ( not egress_log->good() ) {
-                    throw runtime_error( egress_logfile + ": error opening for writing" );
-                }
-            }
-
-            if ( ingress_log ) {
-                *ingress_log << "# mahimahi " + shell_prefix + "ingress: " << initial_timestamp() << endl;
-            }
-            if ( egress_log ) {
-                *egress_log << "# mahimahi " + shell_prefix + "egress: " << initial_timestamp() << endl;
-            }
 
             /* tun device gets datagram -> read it -> give to server socket */
             inner_loop.add_simple_input_handler( tun,

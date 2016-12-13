@@ -3,11 +3,14 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
+#include <memory>
 #include <getopt.h>
 
 #include "exception.hh"
 #include "tunnelshell_common.hh"
 #include "tunnelshell.hh"
+#include "timestamp.hh"
 
 using namespace std;
 using namespace PollerShortNames;
@@ -41,7 +44,7 @@ int main( int argc, char *argv[] )
             { 0,                             0, nullptr,  0  }
         };
 
-        string ingress_logfile, egress_logfile, if_name;
+        string ingress_log_name, egress_log_name, if_name;
 
         while ( true ) {
             const int opt = getopt_long( argc, argv, "",
@@ -52,10 +55,10 @@ int main( int argc, char *argv[] )
 
             switch ( opt ) {
             case 'n':
-                ingress_logfile = optarg;
+                ingress_log_name = optarg;
                 break;
             case 'e':
-                egress_logfile = optarg;
+                egress_log_name = optarg;
                 break;
             case 'i':
                 if_name = optarg;
@@ -98,8 +101,11 @@ int main( int argc, char *argv[] )
         server_socket.connect( server );
         cerr << "Tunnelclient listening for server on port " << server_socket.local_address().port() << endl;
         // XXX error better if this write fails because server is not accepting connections
-        //const wrapped_packet_header to_send = { (uint64_t) -1 };
-        //server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
+
+        std::unique_ptr<std::ofstream> ingress_log, egress_log;
+        initial_timestamp();
+        initialize_logfile( ingress_log, ingress_log_name, argc, argv, "ingress" );
+        initialize_logfile( egress_log, egress_log_name, argc, argv, "egress" );
 
         bool got_ack = false;
         const int retry_loops = 40;
@@ -134,7 +140,7 @@ int main( int argc, char *argv[] )
         TunnelShell tunnelclient;
         tunnelclient.start_link( user_environment, server_socket,
                                  local_private_address, server_private_address,
-                                 ingress_logfile, egress_logfile,
+                                 ingress_log, egress_log,
                                  "[tunnelclient " + server.str() + "] ",
                                  command );
         return tunnelclient.wait_for_exit();

@@ -3,12 +3,14 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 #include <getopt.h>
 
 #include "autoconnect_socket.hh"
 #include "tunnelshell_common.hh"
 #include "tunnelshell.hh"
 #include "interfaces.hh"
+#include "timestamp.hh"
 
 using namespace std;
 using namespace PollerShortNames;
@@ -42,7 +44,7 @@ int main( int argc, char *argv[] )
             { 0,                             0, nullptr,  0  }
         };
 
-        string ingress_logfile, egress_logfile, if_name;
+        string ingress_log_name, egress_log_name, if_name;
 
         while ( true ) {
             const int opt = getopt_long( argc, argv, "",
@@ -53,10 +55,10 @@ int main( int argc, char *argv[] )
 
             switch ( opt ) {
             case 'n':
-                ingress_logfile = optarg;
+                ingress_log_name = optarg;
                 break;
             case 'e':
-                egress_logfile = optarg;
+                egress_log_name = optarg;
                 break;
             case 'i':
                 if_name = optarg;
@@ -96,6 +98,11 @@ int main( int argc, char *argv[] )
         /* bind the listening socket to an available address/port, and print out what was bound */
         listening_socket.bind( Address() );
 
+        std::unique_ptr<std::ofstream> ingress_log, egress_log;
+        initial_timestamp();
+        initialize_logfile( ingress_log, ingress_log_name, argc, argv, "ingress" );
+        initialize_logfile( egress_log, egress_log_name, argc, argv, "egress" );
+
         cout << "mm-tunnelclient localhost " << listening_socket.local_address().port() << " ";
         cout << client_private_address.ip() << " " << local_private_address.ip();
         cout << endl;
@@ -120,7 +127,7 @@ int main( int argc, char *argv[] )
         TunnelShell tunnelserver;
         tunnelserver.start_link( user_environment, listening_socket,
                                  local_private_address, client_private_address,
-                                 ingress_logfile, egress_logfile,
+                                 ingress_log, egress_log,
                                  "[tunnelserver] ", command );
         return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
