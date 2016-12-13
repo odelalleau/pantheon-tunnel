@@ -131,7 +131,7 @@ int main( int argc, char *argv[] )
                     cerr << "Failed to connect to tunnel server after " << retry_loops << " tries, exiting.." << endl;
                     return EXIT_FAILURE;
                 } else {
-                    cerr << "Tunnelclient received no response to from tunnelserver, retrying " << retry_num << "/" << retry_loops << endl;
+                    cerr << "Tunnelclient received no response from tunnelserver, retrying " << retry_num << "/" << retry_loops << endl;
                 }
             }
         }
