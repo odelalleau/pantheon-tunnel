@@ -102,7 +102,7 @@ int main( int argc, char *argv[] )
         //server_socket.write( string( (char *) &to_send, sizeof(to_send) ) );
 
         bool got_ack = false;
-        const int retry_loops = 20;
+        const int retry_loops = 40;
         int retry_num = 0;
         while (not got_ack) {
             send_wrapper_only_datagram( server_socket, (uint64_t) -1 );
