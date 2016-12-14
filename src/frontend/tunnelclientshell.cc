@@ -111,7 +111,12 @@ int main( int argc, char *argv[] )
         const int retry_loops = 40;
         int retry_num = 0;
         while (not got_ack) {
-            send_wrapper_only_datagram( server_socket, (uint64_t) -1 );
+            try {
+                send_wrapper_only_datagram( server_socket, (uint64_t) -1 );
+            } catch ( const exception & e ) {
+                cerr << "Tunnelclient ignoring exception sending a syn:";
+                print_exception( e );
+            }
 
             Poller ack_poll;
             ack_poll.add_action( Poller::Action( server_socket, Direction::In,
