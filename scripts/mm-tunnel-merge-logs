@@ -50,7 +50,6 @@ def single_mode(args):
     if not line:
         warning = 'Warning: egress log is empty\n'
         sys.stderr.write(warning)
-        output_log.write(warning)
         exit(0)
 
     send_init_ts = int(line.rsplit(':', 1)[-1])
@@ -61,7 +60,6 @@ def single_mode(args):
     if not line:
         warning = 'Warning: ingress log is empty\n'
         sys.stderr.write(warning)
-        output_log.write(warning)
         exit(0)
 
     recv_init_ts = int(line.rsplit(':', 1)[-1])
@@ -130,14 +128,12 @@ def single_mode(args):
                         'but left with size %s\n' %
                         (recv_uid, paired_send_size, recv_size))
                     sys.stderr.write(warning)
-                    output_log.write(warning)
                     exit(0)
             else:
                 # nonexistent packet
                 warning = ('Warning: received a packet with nonexistent uid '
                            '%s\n' % recv_uid)
                 sys.stderr.write(warning)
-                output_log.write(warning)
                 exit(0)
 
             delay = recv_ts_cal - paired_send_ts
@@ -222,7 +218,6 @@ def multiple_mode(args):
         if not line:
             warning = 'Warning: tunnel log %s is empty' % tun_log.name
             sys.stderr.write(warning)
-            output_log.write(warning)
             exit(0)
 
         init_ts = int(line.split(':')[1])
@@ -247,7 +242,6 @@ def multiple_mode(args):
         if not line:
             warning = 'Warning: no delivery opportunities found\n'
             sys.stderr.write(warning)
-            output_log.write(warning)
             exit(0)
 
     for i in xrange(len(tun_logs)):
@@ -256,7 +250,6 @@ def multiple_mode(args):
             warning = ('Warning: %s does not contain any arrival or '
                        'departure events\n' % tun_logs[i].name)
             sys.stderr.write(warning)
-            output_log.write(warning)
             exit(0)
 
     # merge all log files
