@@ -1,1 +1,1 @@
-dist_bin_SCRIPTS = mm-tunnel-merge-logs
+dist_bin_SCRIPTS = merge-tunnel-logs
