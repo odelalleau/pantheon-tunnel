@@ -114,7 +114,7 @@ int main( int argc, char *argv[] )
             try {
                 send_wrapper_only_datagram( server_socket, (uint64_t) -1 );
             } catch ( const exception & e ) {
-                cerr << "Tunnelclient ignoring exception sending a syn:";
+                cerr << "Tunnelclient ignoring exception sending a syn: ";
                 print_exception( e );
             }
 
