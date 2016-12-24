@@ -40,6 +40,11 @@ def parse_arguments():
     return parser.parse_args()
 
 
+def convert_timestamp(string_ts):
+    return int(string_ts.rsplit('.', 1)[0])
+    # return float(string_ts) someday maybe
+
+
 def single_mode(args):
     recv_log = open(args.ingress_log)
     send_log = open(args.egress_log)
@@ -52,7 +57,7 @@ def single_mode(args):
         sys.stderr.write(warning)
         exit(0)
 
-    send_init_ts = int(line.rsplit(':', 1)[-1])
+    send_init_ts = convert_timestamp(line.rsplit(':', 1)[-1])
     min_init_ts = send_init_ts
 
     # retrieve initial timestamp of receiver from the first line
@@ -62,7 +67,7 @@ def single_mode(args):
         sys.stderr.write(warning)
         exit(0)
 
-    recv_init_ts = int(line.rsplit(':', 1)[-1])
+    recv_init_ts = convert_timestamp(line.rsplit(':', 1)[-1])
     if recv_init_ts < min_init_ts:
         min_init_ts = recv_init_ts
 
@@ -74,7 +79,7 @@ def single_mode(args):
     send_pkts = {}
     for line in send_log:
         (send_ts, send_uid, send_size) = line.split('-')
-        send_ts = int(send_ts)
+        send_ts = convert_timestamp(send_ts)
         send_size = int(send_size)
         send_pkts[send_uid] = (send_ts + send_cal, send_size)
 
@@ -88,7 +93,7 @@ def single_mode(args):
     send_l = send_log.readline()
     if send_l:
         (send_ts, send_uid, send_size) = send_l.split('-')
-        send_ts = int(send_ts)
+        send_ts = convert_timestamp(send_ts)
         send_size = int(send_size)
         if send_ts + send_cal < base_ts:
             base_ts = send_ts + send_cal
@@ -96,7 +101,7 @@ def single_mode(args):
     recv_l = recv_log.readline()
     if recv_l:
         (recv_ts, recv_uid, recv_size) = recv_l.split('-')
-        recv_ts = int(recv_ts)
+        recv_ts = convert_timestamp(recv_ts)
         recv_size = int(recv_size)
         if recv_ts + recv_cal < base_ts:
             base_ts = recv_ts + recv_cal
@@ -116,7 +121,7 @@ def single_mode(args):
             send_l = send_log.readline()
             if send_l:
                 (send_ts, send_uid, send_size) = send_l.split('-')
-                send_ts = int(send_ts)
+                send_ts = convert_timestamp(send_ts)
                 send_size = int(send_size)
         elif (send_l and recv_l and send_ts_cal > recv_ts_cal) or not send_l:
             if recv_uid in send_pkts:
@@ -141,7 +146,7 @@ def single_mode(args):
             recv_l = recv_log.readline()
             if recv_l:
                 (recv_ts, recv_uid, recv_size) = recv_l.split('-')
-                recv_ts = int(recv_ts)
+                recv_ts = convert_timestamp(recv_ts)
                 recv_size = int(recv_size)
 
     recv_log.close()
@@ -172,7 +177,7 @@ def push_to_heap(heap, index, log_file, init_ts_delta):
 
     if line:
         line_list = line.split()
-        calibrated_ts = int(line_list[0]) + init_ts_delta
+        calibrated_ts = convert_timestamp(line_list[0]) + init_ts_delta
 
         line_list[0] = str(calibrated_ts)
         if line_list[1] == '#':
@@ -202,10 +207,10 @@ def multiple_mode(args):
         while True:
             line = link_log.readline()
             if line.startswith('# init timestamp'):
-                link_init_ts = int(line.split(':')[1])
+                link_init_ts = convert_timestamp(line.split(':')[1])
                 min_init_ts = link_init_ts
                 line = link_log.readline()
-                base_ts = int(line.split(':')[1])
+                base_ts = convert_timestamp(line.split(':')[1])
                 break
     else:
         min_init_ts = sys.maxint
@@ -220,7 +225,7 @@ def multiple_mode(args):
             sys.stderr.write(warning)
             exit(0)
 
-        init_ts = int(line.split(':')[1])
+        init_ts = convert_timestamp(line.split(':')[1])
         init_ts_delta.append(init_ts)
         if init_ts < min_init_ts:
             min_init_ts = init_ts
