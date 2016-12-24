@@ -28,9 +28,6 @@ TunnelShell::TunnelShell( void )
     if ( environ != nullptr ) {
         throw runtime_error( "TunnelShell: environment was not cleared" );
     }
-
-    /* initialize base timestamp value before any forking */
-    initial_timestamp();
 }
 
 void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_socket,
@@ -92,7 +89,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     string uid_wrapped_packet = string( (char *) &to_send, sizeof(struct wrapped_packet_header) ) + packet;
 
                     if ( egress_log ) {
-                        *egress_log << timestamp() << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *egress_log << pretty_microseconds( timestamp_usecs() ) << " - " << to_send.uid << " - " << uid_wrapped_packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     peer_socket.write( uid_wrapped_packet );
@@ -124,7 +121,7 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
                     }
 
                     if ( ingress_log ) {
-                        *ingress_log << timestamp() << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
+                        *ingress_log << pretty_microseconds( timestamp_usecs() ) << " - " << header_received.uid << " - " << packet.length() + UDP_PACKET_HEADER_SIZE << endl;
                     }
 
                     tun.write( contents );

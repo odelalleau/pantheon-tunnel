@@ -1,4 +1,5 @@
 #include <string>
+#include <iomanip>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -50,6 +51,11 @@ inline std::string shell_quote( const std::string & arg )
     return ret;
 }
 
+double pretty_microseconds( uint64_t usecs )
+{
+    return double( usecs ) / double ( 1000 );
+}
+
 inline std::string pretty_command_line( int argc, char *argv[] )
 {
     std::string command_line { shell_quote( argv[ 0 ] ) }; /* for the log file */
@@ -70,6 +76,6 @@ void initialize_logfile( std::unique_ptr<std::ofstream>& log, const std::string 
     }
     
     if ( log ) {
-        *log << "# " + pretty_command_line( argc, argv ) + " " + log_type + ": " << initial_timestamp() << endl;
+        *log << "# " + pretty_command_line( argc, argv ) + " " + log_type + ": " << std::setprecision(3) << std::fixed << pretty_microseconds( initial_timestamp_usecs() ) << endl;
     }
 }

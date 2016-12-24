@@ -24,6 +24,8 @@ void check_interface_for_binding( const std::string &prog_name, const std::strin
 
 void send_wrapper_only_datagram( FileDescriptor &connected_socket, const uint64_t uid );
 
+double pretty_microseconds( uint64_t usecs );
+
 void initialize_logfile( std::unique_ptr<std::ofstream>& log, const std::string &log_name, int argc, char *argv[], std::string log_type );
 
 #endif /* TUNNELSHELL_COMMON_HH */

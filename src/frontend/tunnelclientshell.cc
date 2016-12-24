@@ -103,7 +103,6 @@ int main( int argc, char *argv[] )
         // XXX error better if this write fails because server is not accepting connections
 
         std::unique_ptr<std::ofstream> ingress_log, egress_log;
-        initial_timestamp();
         initialize_logfile( ingress_log, ingress_log_name, argc, argv, "ingress" );
         initialize_logfile( egress_log, egress_log_name, argc, argv, "egress" );
 
