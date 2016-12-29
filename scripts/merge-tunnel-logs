@@ -41,7 +41,7 @@ def parse_arguments():
 
 
 def convert_timestamp(string_ts):
-    return int(string_ts.rsplit('.', 1)[0])
+    return int(round(float(string_ts)))
     # return float(string_ts) someday maybe
 
 
