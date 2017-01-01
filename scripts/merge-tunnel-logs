@@ -40,9 +40,9 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def convert_timestamp(string_ts):
-    return int(round(float(string_ts)))
-    # return float(string_ts) someday maybe
+def parse_line(line):
+    (ts, uid, size) = line.split('-')
+    return (float(ts), int(uid), int(size))
 
 
 def single_mode(args):
@@ -57,7 +57,7 @@ def single_mode(args):
         sys.stderr.write(warning)
         exit(0)
 
-    send_init_ts = convert_timestamp(line.rsplit(':', 1)[-1])
+    send_init_ts = float(line.rsplit(':', 1)[-1])
     min_init_ts = send_init_ts
 
     # retrieve initial timestamp of receiver from the first line
@@ -67,9 +67,11 @@ def single_mode(args):
         sys.stderr.write(warning)
         exit(0)
 
-    recv_init_ts = convert_timestamp(line.rsplit(':', 1)[-1])
+    recv_init_ts = float(line.rsplit(':', 1)[-1])
     if recv_init_ts < min_init_ts:
         min_init_ts = recv_init_ts
+
+    output_log.write('# init timestamp: %.3f\n' % min_init_ts)
 
     # timestamp calibration to ensure non-negative timestamps
     send_cal = send_init_ts - min_init_ts
@@ -78,37 +80,20 @@ def single_mode(args):
     # construct a hash table using uid as keys
     send_pkts = {}
     for line in send_log:
-        (send_ts, send_uid, send_size) = line.split('-')
-        send_ts = convert_timestamp(send_ts)
-        send_size = int(send_size)
+        (send_ts, send_uid, send_size) = parse_line(line)
         send_pkts[send_uid] = (send_ts + send_cal, send_size)
 
     send_log.seek(0)
     send_log.readline()
 
-    output_log.write('# init timestamp: %s\n' % min_init_ts)
-    base_ts = sys.maxint
-
     # merge two sorted logs into one
     send_l = send_log.readline()
     if send_l:
-        (send_ts, send_uid, send_size) = send_l.split('-')
-        send_ts = convert_timestamp(send_ts)
-        send_size = int(send_size)
-        if send_ts + send_cal < base_ts:
-            base_ts = send_ts + send_cal
+        (send_ts, send_uid, send_size) = parse_line(send_l)
 
     recv_l = recv_log.readline()
     if recv_l:
-        (recv_ts, recv_uid, recv_size) = recv_l.split('-')
-        recv_ts = convert_timestamp(recv_ts)
-        recv_size = int(recv_size)
-        if recv_ts + recv_cal < base_ts:
-            base_ts = recv_ts + recv_cal
-
-    if base_ts == sys.maxint:
-        base_ts = 0
-    output_log.write('# base timestamp: %s\n' % base_ts)
+        (recv_ts, recv_uid, recv_size) = parse_line(recv_l)
 
     while send_l or recv_l:
         if send_l:
@@ -117,12 +102,10 @@ def single_mode(args):
             recv_ts_cal = recv_ts + recv_cal
 
         if (send_l and recv_l and send_ts_cal <= recv_ts_cal) or not recv_l:
-            output_log.write('%s + %s\n' % (send_ts_cal, send_size))
+            output_log.write('%.3f + %s\n' % (send_ts_cal, send_size))
             send_l = send_log.readline()
             if send_l:
-                (send_ts, send_uid, send_size) = send_l.split('-')
-                send_ts = convert_timestamp(send_ts)
-                send_size = int(send_size)
+                (send_ts, send_uid, send_size) = parse_line(send_l)
         elif (send_l and recv_l and send_ts_cal > recv_ts_cal) or not send_l:
             if recv_uid in send_pkts:
                 (paired_send_ts, paired_send_size) = send_pkts[recv_uid]
@@ -142,44 +125,41 @@ def single_mode(args):
                 exit(0)
 
             delay = recv_ts_cal - paired_send_ts
-            output_log.write('%s - %s %s\n' % (recv_ts_cal, recv_size, delay))
+            output_log.write('%.3f - %s %.3f\n'
+                             % (recv_ts_cal, recv_size, delay))
             recv_l = recv_log.readline()
             if recv_l:
-                (recv_ts, recv_uid, recv_size) = recv_l.split('-')
-                recv_ts = convert_timestamp(recv_ts)
-                recv_size = int(recv_size)
+                (recv_ts, recv_uid, recv_size) = parse_line(recv_l)
 
     recv_log.close()
     send_log.close()
-    if args.output_log:
-        output_log.close()
+    output_log.close()
 
 
 def push_to_heap(heap, index, log_file, init_ts_delta):
     line = None
 
-    # if log_file is mm-link-log
-    if index == -1:
-        # find the next delivery opportunity
-        while True:
-            line = log_file.readline()
-            if not line:
-                break
+    while True:
+        line = log_file.readline()
+        if not line:
+            break
 
-            if line.startswith('#'):
-                continue
+        if line.startswith('#'):
+            continue
 
+        # if log_file is mm-link-log
+        if index == -1:
+            # find the next delivery opportunity
             if '#' in line:
                 break
-    else:
-        # find the next arrival or departure event
-        line = log_file.readline().strip()
+        else:
+            break
 
     if line:
-        line_list = line.split()
-        calibrated_ts = convert_timestamp(line_list[0]) + init_ts_delta
+        line_list = line.strip().split()
+        calibrated_ts = float(line_list[0]) + init_ts_delta
 
-        line_list[0] = str(calibrated_ts)
+        line_list[0] = '%.3f' % calibrated_ts
         if line_list[1] == '#':
             line_list[2] = str(int(line_list[2]) - 4)
         line = ' '.join(line_list)
@@ -206,40 +186,46 @@ def multiple_mode(args):
         # find initial timestamp in the mm-link log
         while True:
             line = link_log.readline()
-            if line.startswith('# init timestamp'):
-                link_init_ts = convert_timestamp(line.split(':')[1])
-                min_init_ts = link_init_ts
-                line = link_log.readline()
-                base_ts = convert_timestamp(line.split(':')[1])
-                break
+            if not line:
+                warning = 'Warning: link log %s is empty' % link_log.name
+                sys.stderr.write(warning)
+                exit(0)
+
+            if not line.startswith('# init timestamp'):
+                continue
+
+            link_init_ts = float(line.split(':')[1])
+            min_init_ts = link_init_ts
+            break
     else:
         min_init_ts = sys.maxint
-        base_ts = 0
 
     # find the smallest initial timestamp
     init_ts_delta = []
     for tun_log in tun_logs:
-        line = tun_log.readline()
-        if not line:
-            warning = 'Warning: tunnel log %s is empty' % tun_log.name
-            sys.stderr.write(warning)
-            exit(0)
+        while True:
+            line = tun_log.readline()
+            if not line:
+                warning = 'Warning: tunnel log %s is empty' % tun_log.name
+                sys.stderr.write(warning)
+                exit(0)
 
-        init_ts = convert_timestamp(line.split(':')[1])
-        init_ts_delta.append(init_ts)
-        if init_ts < min_init_ts:
-            min_init_ts = init_ts
-        tun_log.readline()
+            if not line.startswith('# init timestamp'):
+                continue
+
+            init_ts = float(line.split(':')[1])
+            init_ts_delta.append(init_ts)
+            if init_ts < min_init_ts:
+                min_init_ts = init_ts
+            break
 
     if link_log:
         link_init_ts_delta = link_init_ts - min_init_ts
-        base_ts += link_init_ts_delta
 
     for i in xrange(len(init_ts_delta)):
         init_ts_delta[i] -= min_init_ts
 
-    output_log.write('# init timestamp: %s\n' % min_init_ts)
-    output_log.write('# base timestamp: %s\n' % base_ts)
+    output_log.write('# init timestamp: %.3f\n' % min_init_ts)
 
     # build the min heap
     if link_log:
@@ -277,8 +263,7 @@ def multiple_mode(args):
         link_log.close()
     for tun_log in tun_logs:
         tun_log.close()
-    if args.output_log:
-        output_log.close()
+    output_log.close()
 
 
 def main():
