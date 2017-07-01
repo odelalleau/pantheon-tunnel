@@ -74,6 +74,15 @@ void assign_address( const string & device_name, const Address & addr, const Add
                      [&] ( ifreq &ifr )
                      { ifr.ifr_netmask = Address( "255.255.255.255", 0 ).to_sockaddr(); } );
 
+    /* disable IPv6 */
+    FileDescriptor disable_all( SystemCall( "open /proc/sys/net/ipv6/conf/all/disable_ipv6",
+                                            open ( "/proc/sys/net/ipv6/conf/all/disable_ipv6", O_RDWR) ) );
+    disable_all.write( "1\n", true );
+
+    FileDescriptor disable_default( SystemCall( "open /proc/sys/net/ipv6/conf/default/disable_ipv6",
+                                                open ( "/proc/sys/net/ipv6/conf/default/disable_ipv6", O_RDWR) ) );
+    disable_default.write( "1\n", true );
+
     /* bring interface up */
     interface_ioctl( SIOCSIFFLAGS, device_name,
                      [] ( ifreq &ifr ) { ifr.ifr_flags = IFF_UP; } );
