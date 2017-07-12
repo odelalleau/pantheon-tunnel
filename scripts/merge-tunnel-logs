@@ -23,6 +23,12 @@ def parse_arguments():
     single_parser.add_argument(
         '-o', action='store', metavar='OUTPUT-LOG', dest='output_log',
         required=True, help='tunnel log after merging')
+    single_parser.add_argument(
+        '-i-clock-offset', metavar='MS', type=float,
+        help='clock offset on the ingress end')
+    single_parser.add_argument(
+        '-e-clock-offset', metavar='MS', type=float,
+        help='clock offset on the egress end')
 
     # subparser for multiple mode
     multiple_parser = subparsers.add_parser(
@@ -56,6 +62,9 @@ def single_mode(args):
         sys.exit('Warning: egress log is empty\n')
 
     send_init_ts = float(line.rsplit(':', 1)[-1])
+    if args.e_clock_offset is not None:
+        send_init_ts += args.e_clock_offset
+
     min_init_ts = send_init_ts
 
     # retrieve initial timestamp of receiver from the first line
@@ -64,6 +73,9 @@ def single_mode(args):
         sys.exit('Warning: ingress log is empty\n')
 
     recv_init_ts = float(line.rsplit(':', 1)[-1])
+    if args.i_clock_offset is not None:
+        recv_init_ts += args.i_clock_offset
+
     if recv_init_ts < min_init_ts:
         min_init_ts = recv_init_ts
 
