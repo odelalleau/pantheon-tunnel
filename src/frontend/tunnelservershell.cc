@@ -65,6 +65,7 @@ int main( int argc, char *argv[] )
                 break;
             case '?':
                 usage_error( argv[ 0 ] );
+                break;
             default:
                 throw runtime_error( "getopt_long: unexpected return value " +
                                      to_string( opt ) );

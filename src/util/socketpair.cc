@@ -57,7 +57,7 @@ FileDescriptor UnixDomainSocket::recv_fd( void )
         throw runtime_error( "recvmsg: control data was truncated" );
     }
 
-    const cmsghdr * const control_message = CMSG_FIRSTHDR( &message_header );
+    cmsghdr * const control_message = CMSG_FIRSTHDR( &message_header );
     if ( (not control_message)
          or (control_message->cmsg_level != SOL_SOCKET)
          or (control_message->cmsg_type != SCM_RIGHTS) ) {
