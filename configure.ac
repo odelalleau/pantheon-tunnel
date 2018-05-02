@@ -50,6 +50,5 @@ AC_CONFIG_FILES([Makefile
 		 src/Makefile
 		 src/util/Makefile
 		 src/packet/Makefile
-		 src/frontend/Makefile
-		 scripts/Makefile])
+		 src/frontend/Makefile])
 AC_OUTPUT
