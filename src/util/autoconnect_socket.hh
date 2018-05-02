@@ -18,7 +18,6 @@ class AutoconnectSocket : public UDPSocket
         {
             if ( not connected_ ) {
                 std::pair<Address, std::string> recpair = UDPSocket::recvfrom();
-                std::cerr << "got connection from " << recpair.first.ip() << std::endl;
                 UDPSocket::connect( recpair.first );
                 connected_ = true;
                 return recpair.second;

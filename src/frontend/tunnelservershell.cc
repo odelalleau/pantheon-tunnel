@@ -114,11 +114,11 @@ int main( int argc, char *argv[] )
                     const string client_packet = listening_socket.read();
                     const wrapped_packet_header client_header = *( (wrapped_packet_header *) client_packet.data() );
                     if (client_packet.length() == sizeof(wrapped_packet_header) && client_header.uid == (uint64_t) -1) {
-                        cout << "Tunnelserver got connection from tunnelclient." << endl;
+                        cout << "Tunnelserver got connection from tunnelclient" << endl;
                         send_wrapper_only_datagram( listening_socket, (uint64_t) -2 );
                         return ResultType::Exit;
                     } else {
-                        cerr << "Tunnelserver received packet with unidentifiable contents." << endl;
+                        cerr << "Tunnelserver received packet with unidentifiable contents" << endl;
                         return ResultType::Continue;
                     }
                     } ) );
@@ -131,7 +131,7 @@ int main( int argc, char *argv[] )
                                  "[tunnelserver] ", command );
         return tunnelserver.wait_for_exit();
     } catch ( const exception & e ) {
-        cerr << "Tunnelserver got an exception. ";
+        cerr << "Tunnelserver got an exception: ";
         print_exception( e );
         return EXIT_FAILURE;
     }

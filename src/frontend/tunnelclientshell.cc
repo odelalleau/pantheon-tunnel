@@ -108,7 +108,7 @@ int main( int argc, char *argv[] )
         initialize_logfile( egress_log, egress_log_name, argc, argv, "egress" );
 
         bool got_ack = false;
-        const int retry_loops = 40;
+        const int retry_loops = 5;
         int retry_num = 0;
         while (not got_ack) {
             try {
@@ -128,7 +128,7 @@ int main( int argc, char *argv[] )
                         }
                         return ResultType::Exit;
                         } ) );
-            ack_poll.poll( 500 );
+            ack_poll.poll( 1000 );
 
             if (not got_ack) {
                 retry_num++;
@@ -150,7 +150,7 @@ int main( int argc, char *argv[] )
                                  command );
         return tunnelclient.wait_for_exit();
     } catch ( const exception & e ) {
-        cerr << "Tunnelclient got an exception. ";
+        cerr << "Tunnelclient got an exception: ";
         print_exception( e );
         return EXIT_FAILURE;
     }
