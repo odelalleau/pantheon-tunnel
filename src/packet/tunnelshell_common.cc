@@ -3,7 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <linux/if.h>
+#include <net/if.h>
 
 #include <memory>
 #include <iostream>
