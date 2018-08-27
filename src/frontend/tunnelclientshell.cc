@@ -92,10 +92,12 @@ int main( int argc, char *argv[] )
 
         UDPSocket server_socket;
 
+        int mtu_size = 1500;
         if ( !if_name.empty() ) {
             /* bind the server socket to a specified interface */
             check_interface_for_binding( string( argv[ 0 ] ), if_name );
             server_socket.bind( if_name );
+            mtu_size = get_mtu( if_name );
         }
 
         /* connect the server_socket to the server_address */
@@ -142,7 +144,7 @@ int main( int argc, char *argv[] )
         }
         cout << "Tunnelclient got connection from tunnelserver at " << server_socket.peer_address().ip() << endl;
 
-        TunnelShell tunnelclient;
+        TunnelShell tunnelclient( mtu_size );
         tunnelclient.start_link( user_environment, server_socket,
                                  local_private_address, server_private_address,
                                  ingress_log, egress_log,

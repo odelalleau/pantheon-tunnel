@@ -22,8 +22,10 @@ class TunnelShell
         uint64_t uid_ = 0;
         EventLoop outside_shell_loop;
 
+        int mtu_size_;
+
     public:
-        TunnelShell( void );
+        TunnelShell( int mtu_size = 1500 );
 
         void start_link( char ** const user_environment, UDPSocket & peer_socket,
                 const Address & local_private_address,

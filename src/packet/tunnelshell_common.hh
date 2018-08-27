@@ -22,6 +22,8 @@ struct wrapped_packet_header {
 
 void check_interface_for_binding( const std::string &prog_name, const std::string &if_name );
 
+int get_mtu( const std::string & if_name );
+
 void send_wrapper_only_datagram( FileDescriptor &connected_socket, const uint64_t uid );
 
 double pretty_microseconds( uint64_t usecs );

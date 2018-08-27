@@ -21,8 +21,8 @@
 using namespace std;
 using namespace PollerShortNames;
 
-TunnelShell::TunnelShell( void )
-    : outside_shell_loop()
+TunnelShell::TunnelShell( int mtu_size )
+    : outside_shell_loop(), mtu_size_( mtu_size )
 {
     /* make sure environment has been cleared */
     if ( environ != nullptr ) {
@@ -42,8 +42,10 @@ void TunnelShell::start_link( char ** const user_environment, UDPSocket & peer_s
     outside_shell_loop.add_child_process( "packetshell", [&]() { // XXX add special child process?
             TunDevice tun( "tunnel", local_private_address, peer_private_address, false );
 
-            interface_ioctl( SIOCSIFMTU, "tunnel",
-                             [] ( ifreq &ifr ) { ifr.ifr_mtu = 1500 - UDP_PACKET_HEADER_SIZE - sizeof( wrapped_packet_header ); } );
+            interface_ioctl( SIOCSIFMTU, "tunnel", [this] ( ifreq &ifr ) {
+                    ifr.ifr_mtu = mtu_size_ - UDP_PACKET_HEADER_SIZE
+                                  - sizeof( wrapped_packet_header );
+            } );
 
             /* bring up localhost */
             interface_ioctl( SIOCSIFFLAGS, "lo",

@@ -2,6 +2,8 @@
 #include <iomanip>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
+#include <linux/if.h>
 
 #include <memory>
 #include <iostream>
@@ -11,6 +13,7 @@
 #include "exception.hh"
 #include "file_descriptor.hh"
 #include "timestamp.hh"
+#include "socket.hh"
 
 using namespace std;
 
@@ -29,6 +32,19 @@ void check_interface_for_binding( const std::string &prog_name, const std::strin
         throw std::runtime_error( prog_name + ": Can only run using --interface if both \"cat " + all_rpf_path
                 + "\"= 0 and \"cat " + interface_rpf_path  + "\"= 0" );
     }
+}
+
+int get_mtu( const string & if_name )
+{
+  ifreq ifr;
+  zero( ifr );
+  strncpy( ifr.ifr_name, if_name.c_str(), sizeof(ifr.ifr_name) );
+
+  /* use a temporary socket */
+  UDPSocket temp;
+  SystemCall( "ioctl " + if_name, ioctl( temp.fd_num(), SIOCGIFMTU, static_cast<void *>( &ifr ) ) );
+
+  return ifr.ifr_mtu;
 }
 
 void send_wrapper_only_datagram( FileDescriptor &connected_socket, const uint64_t uid ) {

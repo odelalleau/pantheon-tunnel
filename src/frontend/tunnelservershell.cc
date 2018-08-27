@@ -91,10 +91,12 @@ int main( int argc, char *argv[] )
 
         AutoconnectSocket listening_socket;
 
+        int mtu_size = 1500;
         if ( !if_name.empty() ) {
             /* bind the listening socket to a specified interface */
             check_interface_for_binding( string( argv[ 0 ] ), if_name );
             listening_socket.bind( if_name );
+            mtu_size = get_mtu( if_name );
         }
         /* bind the listening socket to an available address/port, and print out what was bound */
         listening_socket.bind( Address() );
@@ -124,7 +126,7 @@ int main( int argc, char *argv[] )
                     } ) );
         client_poll.poll( -1 );
 
-        TunnelShell tunnelserver;
+        TunnelShell tunnelserver( mtu_size );
         tunnelserver.start_link( user_environment, listening_socket,
                                  local_private_address, client_private_address,
                                  ingress_log, egress_log,
