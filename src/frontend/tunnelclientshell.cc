@@ -19,7 +19,9 @@ void usage_error( const string & program_name )
 {
     cerr << "Usage: " << program_name << " IP PORT LOCAL-PRIVATE-IP SERVER-PRIVATE-IP [OPTION]... [COMMAND]" << endl;
     cerr << endl;
-    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME --interface=INTERFACE" << endl;
+    cerr << "Options = --ingress-log=FILENAME --egress-log=FILENAME --interface=INTERFACE --mtu=MTU" << endl;
+    cerr << endl;
+    cerr << "MTU is 1500 bytes by default, but will use the detected value on the interface if --interface is given. --mtu will override all." << endl;
 
     throw runtime_error( "invalid arguments" );
 }
@@ -41,10 +43,11 @@ int main( int argc, char *argv[] )
             { "ingress-log", required_argument, nullptr, 'n' },
             { "egress-log",  required_argument, nullptr, 'e' },
             { "interface",   required_argument, nullptr, 'i' },
+            { "mtu",         required_argument, nullptr, 'm' },
             { 0,                             0, nullptr,  0  }
         };
 
-        string ingress_log_name, egress_log_name, if_name;
+        string ingress_log_name, egress_log_name, if_name, mtu;
 
         while ( true ) {
             const int opt = getopt_long( argc, argv, "",
@@ -62,6 +65,9 @@ int main( int argc, char *argv[] )
                 break;
             case 'i':
                 if_name = optarg;
+                break;
+            case 'm':
+                mtu = optarg;
                 break;
             case '?':
                 usage_error( argv[ 0 ] );
@@ -93,11 +99,19 @@ int main( int argc, char *argv[] )
         UDPSocket server_socket;
 
         int mtu_size = 1500;
+
         if ( !if_name.empty() ) {
             /* bind the server socket to a specified interface */
             check_interface_for_binding( string( argv[ 0 ] ), if_name );
             server_socket.bind( if_name );
-            mtu_size = get_mtu( if_name );
+
+            if ( mtu.empty() ) {
+                mtu_size = get_mtu( if_name );
+            }
+        }
+
+        if ( !mtu.empty() ) {
+            mtu_size = stoi( mtu );
         }
 
         /* connect the server_socket to the server_address */
