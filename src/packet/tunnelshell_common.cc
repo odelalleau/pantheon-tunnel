@@ -29,8 +29,7 @@ void check_interface_for_binding( const std::string &prog_name, const std::strin
     FileDescriptor rpf_all( SystemCall( "open " + all_rpf_path, open( all_rpf_path.c_str(), O_RDONLY ) ) );
 
     if ( rpf_interface.read() != "0\n" or rpf_all.read() != "0\n" ) {
-        throw std::runtime_error( prog_name + ": Can only run using --interface if both \"cat " + all_rpf_path
-                + "\"= 0 and \"cat " + interface_rpf_path  + "\"= 0" );
+        throw std::runtime_error( prog_name + ": Please run \"sudo sysctl -w net.ipv4.conf.all.rp_filter=0\" and \"sudo sysctl -w net.ipv4.conf." + if_name + ".rp_filter=0\" to use specified interface");
     }
 }
 
