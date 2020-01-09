@@ -12,7 +12,7 @@ mm_tunnelserver_LDADD = -lrt ../packet/libpacket.a ../util/libutil.a
 mm_tunnelserver_LDFLAGS = -pthread
 
 install-exec-hook:
-	chown root $(DESTDIR)$(bindir)/mm-tunnelclient
-	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelclient
-	chown root $(DESTDIR)$(bindir)/mm-tunnelserver
-	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelserver
+	chown root $(DESTDIR)$(bindir)/mm-tunnelclient || true
+	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelclient || true
+	chown root $(DESTDIR)$(bindir)/mm-tunnelserver || true
+	chmod u+s $(DESTDIR)$(bindir)/mm-tunnelserver || true
