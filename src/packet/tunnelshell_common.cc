@@ -37,7 +37,7 @@ int get_mtu( const string & if_name )
 {
   ifreq ifr;
   zero( ifr );
-  strncpy( ifr.ifr_name, if_name.c_str(), sizeof(ifr.ifr_name) );
+  strncpy( ifr.ifr_name, if_name.c_str(), sizeof(ifr.ifr_name) - 1 );
 
   /* use a temporary socket */
   UDPSocket temp;
